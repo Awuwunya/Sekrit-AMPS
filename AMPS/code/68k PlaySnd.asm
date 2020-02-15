@@ -74,7 +74,6 @@ dMuteDAC:
 		move.b	(a5)+,(a4)+		; send sample data to Dual PCM
 	endr
 
-
 		lea	SampleList(pc),a5	; load address for the stop sample data into a2
 		lea	dZ80+PCM2_Sample,a4	; load addresses for PCM 2 sample to a1
 
@@ -117,8 +116,8 @@ dPlaySnd_Unpause:
 		moveq	#Mus_FM-1,d0		; load the number of music FM channels to d0
 		moveq	#cSize,d3		; get the size of each music channel to d3
 
-		CheckCue			; check that we have a valid YM cue
-		stopZ80
+	CheckCue				; check that we have a valid YM cue
+	stopZ80
 
 .musloop
 		tst.b	(a1)			; check if the channel is running a tracker
@@ -126,7 +125,15 @@ dPlaySnd_Unpause:
 		btst	#cfbInt,(a1)		; is the channel interrupted by SFX?
 		bne.s	.skipmus		; if is, do not update
 
-	CheckCue				; check that we have cue is valid
+	if FEATURE_FM3SM
+		btst	#ctbFM3sm,cType(a1)	; is this FM3 in special mode?
+		beq.s	.nosm			; if not, do normal code
+	WriteYM1	#$B6, mFM3op1+cPanning.w; Panning and LFO: FM3, read from channel
+		bra.s	.skipmus
+
+.nosm
+	endif
+
 	InitChYM				; prepare to write to YM
 	WriteChYM	#$B4, cPanning(a1)	; Panning and LFO: read from channel
 
@@ -141,7 +148,6 @@ dPlaySnd_Unpause:
 .sfxloop
 		tst.b	(a1)			; check if the channel is running a tracker
 		bpl.s	.skipsfx		; if not, do not update
-
 	InitChYM				; prepare to write to YM
 	WriteChYM	#$B4, cPanning(a1)	; Panning and LFO: read from channel
 
@@ -257,6 +263,10 @@ dPlaySnd_Music:
 		move.l	(a4)+,(a3)+		; back up data for every channel
 		dbf	d3, .backup		; loop for each longword
 
+	if (mSFXDAC1-mBackUpArea)&2
+		move.w	(a4)+,(a3)+		; back up data for every channel
+	endif
+
 		mvnbt.q	cfbInt, cfbVol, d3	; each other bit except interrupted and volume update bits
 
 .ch =		mBackDAC1			; start at backup DAC1
@@ -351,6 +361,14 @@ dPlaySnd_Music:
 		mvbit.q	cfbRun, cfbRest, d2	; prepare running tracker and channel rest flags to d2
 
 .loopFM
+	if FEATURE_FM3SM
+		cmp.w	#mFM3op3,a1		; is this FM3op3?
+		bne.s	.nosm			; if not, skip
+		add.w	#3*cSize,a1		; skip all FM3 special mode channels
+
+.nosm
+	endif
+
 		move.b	d2,(a1)			; save channel flags
 		move.b	(a4)+,cType(a1)		; load channel type from list
 		move.b	d4,cTick(a1)		; set channel tick multiplier
@@ -568,7 +586,7 @@ dPlaySnd_SFX:
 		moveq	#2,d2			; prepare duration of 1 frames to d2
 		move.b	1(a2),d3		; load sound effect channel type to d3
 		move.b	d3,d4			; copy type to d4
-		bmi.s	.chPSG			; if channel is a PSG channel, branch
+		bmi.w	.chPSG			; if channel is a PSG channel, branch
 
 		and.w	#$07,d3			; get only the necessary bits to d3
 		subq.w	#2,d3			; since FM 1 and 2 are not used, skip over them
@@ -580,6 +598,17 @@ dPlaySnd_SFX:
 
 		move.w	(a5,d3.w),a3		; get the music channel we should override
 		bset	#cfbInt,(a3)		; override music channel with sound effect
+
+	if FEATURE_FM3SM
+		cmp.w	#mFM3op1,a3		; are we overriding FM3op1?
+		beq.s	.nofm3			; if not, skip
+		bset	#cfbInt,mFM3op3.w	; override FM3op3 too
+		bset	#cfbInt,mFM3op2.w	; override FM3op2 too
+		bset	#cfbInt,mFM3op4.w	; override FM3op4 too
+	dSetFM3SM	#$00			; disable FM3 special mode
+
+.nofm3
+	endif
 		moveq	#1,d2			; prepare duration of 0 frames to d2
 		bra.s	.clearCh
 ; ---------------------------------------------------------------------------
@@ -783,6 +812,8 @@ dPlaySnd_Stop:
 ; ---------------------------------------------------------------------------
 
 dStopMusic:
+	dSetFM3SM	#$00			; disable FM3 special mode
+
 		lea	mVctMus.w,a4		; load driver RAM start to a1
 		move.b	mMasterVolDAC.w,d5	; load DAC master volume to d4
 	dCLEAR_MEM	mChannelEnd-mVctMus, 32	; clear this block of memory with 32 byts per loop

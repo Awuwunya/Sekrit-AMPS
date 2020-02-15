@@ -26,6 +26,8 @@ FEATURE_UNDERWATER =	1	; set to 1 to enable underwater mode
 FEATURE_BACKUP =	1	; set to 1 to enable back-up channels. Used for the 1-up SFX in Sonic 1, 2 and 3K...
 FEATURE_BACKUPNOSFX =	1	; set to 1 to disable SFX while a song is backed up. Used for the 1-up SFX.
 FEATURE_FM6 =		1	; set to 1 to enable FM6 to be used in music
+FEATURE_FM3SM =		1	; set to 1 to enable FM3 Special Mode support
+FEATURE_MODTL =		1	; set to 1 to enable TL modulation feature
 
 ; Select the tempo algorith.
 ; 0 = Overflow method.
@@ -122,17 +124,64 @@ cfbVol		rs.b 1		; set if channel should update volume
 cfbRun =	$07		; set if channel is running a tracker
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
+; TL modulation operator configuration
+; ---------------------------------------------------------------------------
+	if FEATURE_MODTL
+	rsset 0
+toFlags		rs.b 1		; various TL modulation flags
+toModDelay	rs.b 1		; delay before modulation starts
+toModVol 	rs.b 0		; modulation volume offset
+toMod		rs.l 1		; modulation data address
+toModSpeed	rs.b 1		; number of frames til next modulation step
+toModStep	rs.b 1		; modulation volume offset per step
+toModCount	rs.b 1		; number of modulation steps until reversal
+toVolEnv	rs.b 1		; tl volume envelope ID
+toEnvPos	rs.b 1		; tl volume envelope position
+toSize		rs.w 0		; size of each operator
+toSize4 =	toSize*4	; size of 4 operators in 1
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; TL modulation configuration
+; ---------------------------------------------------------------------------
+
+	rsset 0
+tFM1		rs.b toSize4	; data for FM1
+tFM2		rs.b toSize4	; data for FM2
+tFM3		rs.b toSize4	; data for FM3
+tFM4		rs.b toSize4	; data for FM4
+tFM5		rs.b toSize4	; data for FM5
+	if FEATURE_FM6
+tFM6		rs.b cSize	; data for FM6
+	endif
+tSizeMus 	rs.w 0		; size of all data for music channels
+
+	rsset 0
+tSFXFM3		rs.b toSize4	; data for SFX FM3
+tSFXFM4		rs.b toSize4	; data for SFX FM4
+tSFXFM5		rs.b toSize4	; data for SFX FM5
+tSizeSFX	rs.w 0		; size of all data
+	endif
+; ===========================================================================
+; ---------------------------------------------------------------------------
 ; Misc variables for channel modes
 ; ---------------------------------------------------------------------------
 
 ctbPt2 =	$02		; bit part 2 - FM 4-6
 ctFM1 =		$00		; FM 1
-ctFM2 =		$01		; FM 2
-ctFM3 =		$02		; FM 3	- Valid for SFX
+ctFM2 =		$01		; FM 2	- Valid for SFX
+ctFM3 =		$02		; FM 3
 ctFM4 =		$04		; FM 4	- Valid for SFX
 ctFM5 =		$05		; FM 5	- Valid for SFX
 	if FEATURE_FM6
 ctFM6 =		$06		; FM 6
+	endif
+
+	if FEATURE_FM3SM
+ctbFM3sm =	$03
+ctFM3op1 =	(1<<ctbFM3sm)|$00; FM 3 special mode operator 1
+ctFM3op3 =	(1<<ctbFM3sm)|$01; FM 3 special mode operator 3
+ctFM3op2 =	(1<<ctbFM3sm)|$02; FM 3 special mode operator 2
+ctFM3op4 =	(1<<ctbFM3sm)|$03; FM 3 special mode operator 4
 	endif
 
 ctbDAC =	$04		; DAC bit
@@ -149,7 +198,7 @@ ctPSG4 =	$E0		; PSG 4
 ; ---------------------------------------------------------------------------
 
 Mus_DAC =	2		; number of DAC channels
-Mus_FM =	5+((FEATURE_FM6<>0)&1); number of FM channels (5 or 6)
+Mus_FM =	5+((FEATURE_FM6<>0)&1)+((FEATURE_FM3SM<>0)&3); number of FM channels (5, 6, 8, or 9)
 Mus_PSG =	3		; number of PSG channels
 Mus_Ch =	Mus_DAC+Mus_FM+Mus_PSG; total number of music channels
 SFX_DAC =	1		; number of DAC SFX channels
@@ -159,6 +208,9 @@ SFX_Ch =	SFX_DAC+SFX_FM+SFX_PSG; total number of SFX channels
 
 VoiceRegs =	29		; total number of registers inside of a voice
 VoiceTL =	VoiceRegs-4	; location of voice TL levels
+	if FEATURE_FM3SM
+VoiceRegsSM =	8		; total number of registers to write for FM3 Special Mode voice
+	endif
 
 MaxPitch =	$1000		; this is the maximum pitch Dual PCM is capable of processing
 Z80E_Read =	$00018		; this is used by Dual PCM internally but we need this for macros
@@ -186,7 +238,7 @@ sr3 =		$0040		; 1 Quarter sample rate	3500 Hz
 dZ80 =		$A00000		; quick reference to Z80 RAM
 dPSG =		$C00011		; quick reference to PSG port
 
-	rsset $FFFFF000		; Insert your RAM definition here!
+	rsset $FFFF9800		; Insert your RAM definition here!
 mFlags		rs.b 1		; various driver flags, see below
 mCtrPal		rs.b 1		; frame counter fo 50hz fix
 mComm		rs.b 8		; communications bytes
@@ -206,12 +258,31 @@ mContLast	rs.b 1		; last continous sfx played
 mLastCue	rs.b 1		; last YM Cue the sound driver was accessing
 		rs.w 0		; align channel data
 
-mBackUpArea	rs.b 0		; this is where backup stuff starts
+	if FEATURE_MODTL
+mTLSFX		rs.b tSizeSFX	; TL modulation data
+	endif
+
+mBackUpArea	rs.w 0		; this is where backup stuff starts
+	if FEATURE_MODTL
+mTL		rs.b tSizeMus	; TL modulation data
+	endif
 mDAC1		rs.b cSize	; DAC 1 data
 mDAC2		rs.b cSize	; DAC 2 data
 mFM1		rs.b cSize	; FM 1 data
 mFM2		rs.b cSize	; FM 2 data
+
+	if FEATURE_FM3SM
+mFM3		rs.w 0		; FM 3 data
+mFM3op1		rs.b cSize	; FM3 special mode operator 1 data
+mFM3op3		rs.b cSize	; FM3 special mode operator 3 data
+mFM3keyMask =	mFM3op3+cPanning; FM3 key enable mask. Used for CSM mode
+mFM3op2		rs.b cSize	; FM3 special mode operator 2 data
+mStatFM3 =	mFM3op2+cPanning; FM3 enable register status. Also used to control Timer A
+mFM3op4		rs.b cSize	; FM3 special mode operator 4 data
+	else
 mFM3		rs.b cSize	; FM 3 data
+	endif
+
 mFM4		rs.b cSize	; FM 4 data
 mFM5		rs.b cSize	; FM 5 data
 	if FEATURE_FM6
@@ -230,12 +301,25 @@ mSFXPSG3	rs.b cSizeSFX	; SFX PSG 3 data
 mChannelEnd	rs.w 0		; used to determine where channel RAM ends
 
 	if FEATURE_BACKUP
-mBackUpLoc	rs.b 0		; this is where backup stuff is loaded
+mBackUpLoc	rs.w 0		; this is where backup stuff is loaded
+	if FEATURE_MODTL
+mBackTL		rs.b tSizeMus	; back-up for TL modulation data
+	endif
 mBackDAC1	rs.b cSize	; back-up DAC 1 data
 mBackDAC2	rs.b cSize	; back-up DAC 2 data
 mBackFM1	rs.b cSize	; back-up FM 1 data
 mBackFM2	rs.b cSize	; back-up FM 2 data
+
+	if FEATURE_FM3SM
+mBackFM3	rs.b 0		; back-up FM 3 data
+mBackFM3op1	rs.b cSize	; back-up FM3 special mode operator 1 data
+mBackFM3op3	rs.b cSize	; back-up FM3 special mode operator 3 data
+mBackFM3op2	rs.b cSize	; back-up FM3 special mode operator 2 data
+mBackFM3op4	rs.b cSize	; back-up FM3 special mode operator 4 data
+	else
 mBackFM3	rs.b cSize	; back-up FM 3 data
+	endif
+
 mBackFM4	rs.b cSize	; back-up FM 4 data
 mBackFM5	rs.b cSize	; back-up FM 5 data
 	if FEATURE_FM6

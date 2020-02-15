@@ -132,7 +132,16 @@ Textinit:
 	asc.w 0,"DAC2"
 	asc.w 0," FM1"
 	asc.w 0," FM2"
-	asc.w 0," FM3"
+
+	if FEATURE_FM3SM
+		asc.w 0,"F3O1"
+		asc.w 0,"F3O3"
+		asc.w 0,"F3O2"
+		asc.w 0,"F3O4"
+
+	else
+		asc.w 0," FM3"
+	endif
 	asc.w 0," FM4"
 	asc.w 0," FM5"
 
@@ -267,6 +276,20 @@ GameProgram:
 
 	if FEATURE_FM6
 		vdpCoord 1,15,WRITE
+		move.l	(a0)+,(a5)
+		move.l	(a0)+,(a5)
+	endif
+
+	if FEATURE_FM3SM
+		vdpCoord 1,(15+FEATURE_FM6),WRITE
+		move.l	(a0)+,(a5)
+		move.l	(a0)+,(a5)
+
+		vdpCoord 1,(16+FEATURE_FM6),WRITE
+		move.l	(a0)+,(a5)
+		move.l	(a0)+,(a5)
+
+		vdpCoord 1,(17+FEATURE_FM6),WRITE
 		move.l	(a0)+,(a5)
 		move.l	(a0)+,(a5)
 	endif

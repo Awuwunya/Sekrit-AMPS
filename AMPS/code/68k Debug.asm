@@ -504,6 +504,25 @@ AMPS_DebugR_dcBackup:
 	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
+; Handler for disabled features - Special FM 3
+; ---------------------------------------------------------------------------
+
+AMPS_Debug_dcSpecFM3	macro
+	if def(RaiseError)	; check if Vladik's debugger is active
+		jsr	AMPS_DebugR_dcSpecFM3
+	else
+		bra.w	*
+	endif
+    endm
+
+	if FEATURE_FM3SM=0
+	if def(RaiseError)	; check if Vladik's debugger is active
+AMPS_DebugR_dcSpecFM3:
+		RaiseError "FM3 Special Mode feature is disabled. Set FEATURE_FM3SM to 1 to enable.", AMPS_Debug_Console_Channel
+	endif
+	endif
+; ===========================================================================
+; ---------------------------------------------------------------------------
 ; PSG on sPan handler
 ; ---------------------------------------------------------------------------
 
@@ -699,18 +718,18 @@ AMPS_Debug_UpdVoiceFM	macro
 
 AMPS_Debug_UpdVolFM	macro
 	cmp.b	#'N',(a4)+	; check if this is valid voice
-	bne.s	.fail		; if not, branch
+	bne.s	.fail\@		; if not, branch
 	cmp.w	#'AT',(a4)+	; check if this is valid voice
-	beq.s	.ok		; if is, branch
+	beq.s	.ok\@		; if is, branch
 
-.fail
+.fail\@
 	if def(RaiseError)	; check if Vladik's debugger is active
 		jsr	AMPS_DebugR_UpdVolFM
 	else
 		bra.w	*
 	endif
 
-.ok
+.ok\@
     endm
 
 	if def(RaiseError)	; check if Vladik's debugger is active
