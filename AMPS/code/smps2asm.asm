@@ -613,38 +613,43 @@ mask =		mask>>1			; get the next bit to check
 	endr
     endm
 
-; FF4x - Turn on TL Modulation for operator x (TL_MOD - MODS_ON)
+; FF5x - Turn on TL Modulation for operator x (TL_MOD - MODS_ON)
 sModOnTL	macro op
+	dc.b $FF, $50|((\op-1)*4)
+    endm
+
+; FF6x - Turn off TL Modulation for operator x (TL_MOD - MODS_OFF)
+sModOffTL	macro op
 	dc.b $FF, $60|((\op-1)*4)
     endm
 
-; FF4x - Turn off TL Modulation for operator x (TL_MOD - MODS_OFF)
-sModOffTL	macro op
-	dc.b $FF, $70|((\op-1)*4)
-    endm
-
-; FF6uwwxxyyzz - TL Modulation for operator u
+; FF7uwwxxyyzz - TL Modulation for operator u
 ;  ww: wait time
 ;  xx: modulation speed
 ;  yy: change per step
 ;  zz: number of steps
 ; (TL_MOD - MOD_SETUP)
 ssModTL		macro op, wait, speed, step, count
-	dc.b $FF, $80|((op-1)*4)
+	dc.b $FF, $70|((op-1)*4)
 	sModData	\wait,\speed,\step,\count
     endm
 
-; FF40 - Freeze 68k. Debug flag (DEBUG_STOP_CPU)
+; FF8yxx - Set TL volume envelope to xx for operator y (TL_MOD - FM_VOLENV)
+sVolEnvTL	macro val
+	dc.b $FF, $80|((op-1)*4), \val
+    endm
+
+; FF80 - Freeze 68k. Debug flag (DEBUG_STOP_CPU)
 sFreeze		macro
 	if safe=1
-		dc.b $FF,$40
+		dc.b $FF,$80
 	endif
     endm
 
-; FF44 - Bring up tracker debugger at end of frame. Debug flag (DEBUG_PRINT_TRACKER)
+; FF84 - Bring up tracker debugger at end of frame. Debug flag (DEBUG_PRINT_TRACKER)
 sCheck		macro
 	if safe=1
-		dc.b $FF,$44
+		dc.b $FF,$84
 	endif
     endm
 ; ---------------------------------------------------------------------------------------------
@@ -656,4 +661,3 @@ snOff =		$00			; disables PSG3 noise mode.
 _num =		$E0
 	enum snPeri10, snPeri20, snPeri40, snPeriPSG3
 	enum snWhite10,snWhite20,snWhite40,snWhitePSG3
-

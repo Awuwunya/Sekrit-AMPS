@@ -445,6 +445,7 @@ AMPS_Debug_dcVoiceEnv	macro
 	else
 		bra.w	*
 	endif
+
 .ok
     endm
 
@@ -552,23 +553,6 @@ AMPS_Debug_dcPan	macro
     endm
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Gate command on SFX channel handler
-; ---------------------------------------------------------------------------
-
-AMPS_Debug_dcGate	macro
-	cmp.w	#mSFXDAC1,a1	; check for SFX channel
-	blo.s	.ok		; if not, branch
-
-	if def(RaiseError)	; check if Vladik's debugger is active
-		RaiseError "sGate on a SFX channel!", AMPS_Debug_Console_Channel
-	else
-		bra.w	*
-	endif
-
-.ok
-    endm
-; ===========================================================================
-; ---------------------------------------------------------------------------
 ; NoisePSG command on an invalid channel handler
 ; ---------------------------------------------------------------------------
 
@@ -588,10 +572,27 @@ AMPS_Debug_dcNoisePSG	macro
 
 .ckch
 	cmp.b	#ctPSG3,cType(a1); check if this is PSG3 or PSG4 channel
-	bhs.s	.ok		; if not, branch
+	bhs.s	.ok		; if is, branch
 
 	if def(RaiseError)	; check if Vladik's debugger is active
 		RaiseError "sNoisePSG on an invalid channel!", AMPS_Debug_Console_Channel
+	else
+		bra.w	*
+	endif
+
+.ok
+    endm
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Gate command on SFX channel handler
+; ---------------------------------------------------------------------------
+
+AMPS_Debug_dcGate	macro
+	cmp.w	#mSFXDAC1,a1	; check for SFX channel
+	blo.s	.ok		; if not, branch
+
+	if def(RaiseError)	; check if Vladik's debugger is active
+		RaiseError "sGate on a SFX channel!", AMPS_Debug_Console_Channel
 	else
 		bra.w	*
 	endif
@@ -785,6 +786,37 @@ AMPS_Debug_PlayCmd	macro
     endm
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
+; NoisePSG command on an invalid channel handler
+; ---------------------------------------------------------------------------
+
+AMPS_Debug_dcNoisePSG	macro
+	beq.s	.ckch		; branch if value is 0
+	cmp.b	#snPeri10,d3	; check if the value is below valid range
+	blo.s	.fail		; branch if yes
+	cmp.b	#snWhitePSG3,d3	; check if the value is above valid range
+	bls.s	.ckch		; branch if not
+
+.fail
+	if def(RaiseError)	; check if Vladik's debugger is active
+		RaiseError "sNoisePSG with an invalid value: %<.b d3>", AMPS_Debug_Console_Channel
+	else
+		bra.w	*
+	endif
+
+.ckch
+	cmp.b	#ctPSG3,cType(a1); check if this is PSG3 or PSG4 channel
+	bhs.s	.ok		; if not, branch
+
+	if def(RaiseError)	; check if Vladik's debugger is active
+		RaiseError "sNoisePSG on an invalid channel!", AMPS_Debug_Console_Channel
+	else
+		bra.w	*
+	endif
+
+.ok
+    endm
+; ===========================================================================
+; ---------------------------------------------------------------------------
 ; Sound ID check
 ; ---------------------------------------------------------------------------
 
@@ -797,6 +829,7 @@ AMPS_Debug_SoundID	macro
 	else
 		bra.w	*
 	endif
+
 .ok
     endm
 ; ===========================================================================
@@ -817,6 +850,7 @@ AMPS_Debug_PlayTrackMus	macro
 	else
 		bra.w	*
 	endif
+
 .ok\@
     endm
 

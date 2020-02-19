@@ -106,8 +106,8 @@ tlmod	macro name
 	endif
 
 	if safe=1
-		bra.w	dcFreeze	; FF 40 - Freeze CPU. Debug flag (DEBUG_STOP_CPU)
-		bra.w	dcTracker	; FF 44 - Bring up tracker debugger at end of frame. Debug flag (DEBUG_PRINT_TRACKER)
+		bra.w	dcFreeze	; FF 80 - Freeze CPU. Debug flag (DEBUG_STOP_CPU)
+		bra.w	dcTracker	; FF 84 - Bring up tracker debugger at end of frame. Debug flag (DEBUG_PRINT_TRACKER)
 	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -323,7 +323,7 @@ dcGate:
 		AMPS_Debug_dcGate		; check if this channel has gate support
 	endif
 
-		move.b	(a2),cGateMain(a1)	; load note timeout from tracker to channel
+		move.b	(a2),cGateMain(a1)	; load note gate from tracker to channel
 		move.b	(a2)+,cGateCur(a1)	; ''
 		rts
 ; ===========================================================================
@@ -438,12 +438,22 @@ dcYM:
 		cmp.b	#$08,d4 		; is this register A8-AF?
 		blo.s	.pt1			; if so, write to part 1 always
 
+	if FEATURE_FM3SM
+		btst	#ctbFM3sm,cType(a1)	; is this FM3 in special mode?
+		bne.s	.dosm			; if yes, do special code
+	endif
+
 	InitChYM				; prepare to write to YM channel
 	stopZ80
 	WriteChYM	d3, d1			; write to the channel
 	;	st	(a0)			; write end marker
 	startZ80
 		rts
+
+	if FEATURE_FM3SM
+.dosm
+		addq.b	#2,d3			; set to FM3 command
+	endif
 
 .pt1
 	stopZ80
@@ -669,7 +679,7 @@ copychFM3SM	macro ch, type
 	move.b	mFM3op1+cVoice.w,\ch+cVoice.w	; copy voice (DOES NOT UPDATE IT!!)
 	move.b	mFM3op1+cLastDur.w,\ch+cLastDur.w; copy last duration
 	move.w	mFM3op1+cFreq.w,\ch+cFreq.w	; copy frequency
-	move.w	mFM3op1+cGateCur.w,\ch+cGateCur.w; copy note timeout
+	move.w	mFM3op1+cGateCur.w,\ch+cGateCur.w; copy note gate
     endm
 
     		move.l	a2,a4			; copy tracker address to a4
@@ -687,31 +697,9 @@ copychFM3SM	macro ch, type
 	copychFM3SM	mFM3op4, ctFM3op4
 		rts
 
-	elseif safe=1		; NOTE: You can remove this check, but its unsafe to do so!
+	elseif safe=1
 		AMPS_Debug_dcSpecFM3		; this is an invalid command
 	endif
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Tracker command for enabling raw frequency mode
-; ---------------------------------------------------------------------------
-
-dcFreqOn:
-	if safe=1
-		AMPS_Debug_dcInvalid		; this is an invalid command
-	endif
-		rts
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Tracker command for disabling raw frequency mode
-; ---------------------------------------------------------------------------
-
-dcFreqOff:
-	if safe=1
-		AMPS_Debug_dcInvalid		; this is an invalid command
-	endif
-
-locret_FreqOff:
-		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Tracker command for setting volume envelope ID
@@ -865,7 +853,6 @@ dcVoice:
 
 		btst	#ctbDAC,cType(a1)	; check if this is a DAC channel
 		bne.s	locret_Backup		; if is, skip
-
 		btst	#cfbInt,(a1)		; check if channel is interrupted by SFX
 		bne.s	locret_Backup		; if is, skip
 
@@ -1273,7 +1260,6 @@ dcStop:
 		bra.s	.nextfm3		; enable it too!
 	endif
 
-
 .fixch
 		move.w	(sp)+,a1		; pop the current channel
 
@@ -1338,10 +1324,10 @@ dcsLFO:
 
 	InitChYM				; prepare to write Channel-specific YM registers
 	stopZ80
-	WriteChYM	#$60, (a5)+		; Decay 1 level: Decay 1 + AMS enable bit for operator 1
-	WriteChYM	#$68, (a5)+		; Decay 1 level: Decay 1 + AMS enable bit for operator 3
-	WriteChYM	#$64, (a5)+		; Decay 1 level: Decay 1 + AMS enable bit for operator 2
 	WriteChYM	#$6C, (a5)+		; Decay 1 level: Decay 1 + AMS enable bit for operator 4
+	WriteChYM	#$64, (a5)+		; Decay 1 level: Decay 1 + AMS enable bit for operator 2
+	WriteChYM	#$68, (a5)+		; Decay 1 level: Decay 1 + AMS enable bit for operator 3
+	WriteChYM	#$60, (a5)+		; Decay 1 level: Decay 1 + AMS enable bit for operator 1
 		bra.s	.cont
 
 .skipLFO
@@ -1351,6 +1337,23 @@ dcsLFO:
 .cont
 	WriteYM1	#$22, (a2)+		; LFO: LFO frequency and enable
 		move.b	(a2)+,d3		; load AMS, FMS & Panning from tracker
+
+	if FEATURE_FM3SM
+		btst	#ctbFM3sm,cType(a1)	; is this FM3 in special mode?
+		beq.s	.nosm			; if not, do normal code
+		move.b	d3,mFM3op1+cPanning.w	; save to FM3op1
+
+		btst	#cfbInt,(a1)		; check if channel is interrupted
+		bne.s	.skipPan		; if so, skip panning
+	WriteYM1	#$B4+2, d3		; Panning & LFO: FM3, AMS + FMS + Panning
+
+	;	st	(a0)			; write end marker
+	startZ80
+		move.l	a5,sp			; restore stack pointer
+		rts
+	endif
+
+.nosm
 		move.b	d3,cPanning(a1)		; save to channel panning
 
 		btst	#cfbInt,(a1)		; check if channel is interrupted

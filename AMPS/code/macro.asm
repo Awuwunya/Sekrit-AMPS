@@ -52,7 +52,7 @@ cData		rs.l 1		; 68k tracker address for the channel
 	if FEATURE_DACFMVOLENV=0
 cEnvPos		rs.b 0		; volume envelope position. PSG only
 	endif
-cPanning	rs.b 1		; channel panning and LFO. FM and DAC only
+cPanning	rs.b 1		; channel panning and LFO. FM and DAC only. Not used in FM3 op2-op4.
 cDetune		rs.b 1		; frequency detune (offset)
 cPitch		rs.b 1		; pitch (transposition) offset
 cVolume		rs.b 1		; channel volume
@@ -213,7 +213,7 @@ VoiceRegsSM =	8		; total number of registers to write for FM3 Special Mode voice
 	endif
 
 MaxPitch =	$1000		; this is the maximum pitch Dual PCM is capable of processing
-Z80E_Read =	$00018		; this is used by Dual PCM internally but we need this for macros
+Z80E_Read =	$0018		; this is used by Dual PCM internally but we need this for macros
 
 ; NOTE: There is no magic trick to making Dual PCM play samples at higher rates.
 ; These values are only here to allow you to give lower pitch samples higher
@@ -238,7 +238,7 @@ sr3 =		$0040		; 1 Quarter sample rate	3500 Hz
 dZ80 =		$A00000		; quick reference to Z80 RAM
 dPSG =		$C00011		; quick reference to PSG port
 
-	rsset $FFFF9800		; Insert your RAM definition here!
+	rsset Drvmem		; Insert your RAM definition here!
 mFlags		rs.b 1		; various driver flags, see below
 mCtrPal		rs.b 1		; frame counter fo 50hz fix
 mComm		rs.b 8		; communications bytes
@@ -476,7 +476,7 @@ res =			res|$FFFFFF00	; must be negative value
 ;   block - Size of clear block
 ;
 ; thrashes:
-;   d6 - Set to $0000FFFF
+;   d6 - Set to $xxxxFFFF
 ;   a4 - Destination address
 ; ---------------------------------------------------------------------------
 

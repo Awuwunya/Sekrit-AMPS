@@ -564,7 +564,6 @@ dKeyOffFM:
 		btst	#cfbInt,(a1)		; check if overridden by sfx
 		bne.s	locret_UpdFreqFM	; if so, do not note off
 
-
 dKeyOffFM2:
 	if FEATURE_FM3SM
 		btst	#ctbFM3sm,cType(a1)	; is this FM3 in special mode?
@@ -576,7 +575,6 @@ dKeyOffSM:
 
 dKeyOffFM3:
 	endif
-
 		btst	#cfbHold,(a1)		; check if note is held
 		bne.s	.rts			; if so, do not note off
 		move.b	cType(a1),d3		; load channel type value to d3
@@ -609,7 +607,7 @@ dFreqFM:dc.w								       $025E; Octave-1 - (80)
 	dc.w $3A84,$3AAB,$3AD3,$3AFE,$3B2D,$3B5C,$3B8F,$3BC5,$3BFF,$3C3C,$3C7C	    ; Octave 7 - (D5 - DF)
 dFreqFM_:
 	if safe=1				; in safe mode, we have extra debug data
-.x = $100|((dFreqFM_-dFreqFM)/2)		; to check if we played an invalid note
+.x =		$100|((dFreqFM_-dFreqFM)/2)	; to check if we played an invalid note
 		rept $80-((dFreqFM_-dFreqFM)/2)	; and if so, tell us which note it was
 			dc.w .x
 .x =			.x+$101

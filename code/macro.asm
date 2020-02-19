@@ -237,7 +237,7 @@ MED_MAP_CTRL =	$A130F0
 ; ===========================================================================
 	rsset $FFFF0000
 Buffer		rs.b $8100	; general purpose buffers
-Drvmem		rs.b $700	; sound driver memroy
+Drvmem		rs.b $D00	; sound driver memroy
 		rs.b $100	; stack data
 Stack		rs.w 0		; stack start
 Palette		rs.w $40	; palette

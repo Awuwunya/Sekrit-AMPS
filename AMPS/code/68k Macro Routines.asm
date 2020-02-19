@@ -76,12 +76,12 @@ dModPorta	macro jump,loop,type
 dPortamento	macro jump,loop,type
 	if FEATURE_PORTAMENTO
 		if FEATURE_MODULATION=0
-			tst.b	cPortaSpeed(a1)	; check if portamento is active
-			bne.s	.doporta	; if not, branch
+			tst.b	cPortaSpeed(a1)		; check if portamento is active
+			bne.s	.doporta		; if not, branch
 
 			if FEATURE_MODENV
-				tst.b	cModEnv(a1); check if modulation envelope ID is not 0
-				bne.s	.nowrap	; if so, update frequency nonetheless
+				tst.b	cModEnv(a1)	; check if modulation envelope ID is not 0
+				bne.s	.nowrap		; if so, update frequency nonetheless
 			endif
 
 			dGenLoops 1, \jump,\loop,\type
@@ -342,7 +342,7 @@ dProcNote	macro sfx, chan
 
 	; handle modulation for each TLmod
 	if (\chan=0)&(FEATURE_MODTL<>0)
-.op		= 0
+.op =		0
 		rept 4
 .of =			toSize*.op
 			if .op=0
@@ -364,7 +364,7 @@ dProcNote	macro sfx, chan
 			move.b	(a4)+,cModStep+.of(a3)	; copy step offset
 
 .open\#.op\_\@
-.op			= .op+1
+.op =			.op+1
 		endr
 	endif
 
@@ -390,23 +390,23 @@ dProcNote	macro sfx, chan
 ; Macro for processing a note in DAC channel
 ; ---------------------------------------------------------------------------
 
-dTrackNoteDAC   macro
-        	btst     #cfbMode,(a1)        	; check if we are on pitch mode
-        	bne.s    .pitch            	; if so, load pitch
-        	move.b   d1,cSample(a1)        	; else, save as a sample
-        	bra.s    .cont
+dTrackNoteDAC	macro
+		btst	#cfbMode,(a1)		; check if we are on pitch mode
+		bne.s	.pitch			; if so, load pitch
+		move.b	d1,cSample(a1)		; else, save as a sample
+		bra.s	.cont
 
 .pitch
-        	subi.b   #$80,d1            	; sub $80 from the note (notes start at $80)
-        	bne.s    .noprest        	; branch if note wasnt $80 (rest)
-        	moveq    #-$80,d4        	; tell the code we are resting
-        	bra.s    .cont
+		subi.b	#$80,d1			; sub $80 from the note (notes start at $80)
+		bne.s	.noprest		; branch if note wasnt $80 (rest)
+		moveq	#-$80,d4		; tell the code we are resting
+		bra.s	.cont
 
 .noprest
-        	add.b   cPitch(a1),d1        	; add pitch offset to note
-        	add.w   d1,d1             	; double offset (each entry is a word)
-        	lea     dFreqDAC(pc),a4        	; load DAC frequency table to a1
-        	move.w  (a4,d1.w),cFreq(a1)    	; load and save the requested frequency
+		add.b	cPitch(a1),d1		; add pitch offset to note
+		add.w	d1,d1			; double offset (each entry is a word)
+		lea	dFreqDAC(pc),a4		; load DAC frequency table to a1
+		move.w	(a4,d1.w),cFreq(a1)	; load and save the requested frequency
 
 .cont
     endm
@@ -539,7 +539,7 @@ dStopChannel	macro	stop
 		bmi.s	.mutePSG		; if yes, mute it
 
 		btst	#ctbDAC,cType(a1)	; check if this was a DAC channel
-		bne.s	.cont			; if we are, skip
+		bne.s	.muteDAC		; if we are, skip
 
 	if stop=0
 		jsr	dKeyOffFM(pc)		; send key-off command to YM
@@ -552,8 +552,17 @@ dStopChannel	macro	stop
 .mutePSG
 	if stop=0
 		jsr	dMutePSGmus(pc)		; mute PSG channel
+		bra.s	.cont
 	else
 		jmp	dMutePSGmus(pc)		; mute PSG channel
+	endif
+; ---------------------------------------------------------------------------
+
+.muteDAC
+	if stop=0
+		jsr	dMuteDACmus(pc)		; mute DAC channel
+	else
+		jmp	dMuteDACmus(pc)		; mute DAC channel
 	endif
 
 .cont
