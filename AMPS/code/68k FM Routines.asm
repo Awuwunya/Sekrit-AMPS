@@ -326,7 +326,7 @@ dAMPSnextFMSFX:
 		jmp	dAMPSdoPSGSFX(pc)	; after that, process SFX PSG channels
 
 .update
-		and.b	#$FF-(1<<cfbHold)-(1<<cfbRest),(a1); clear hold and rest flags
+		and.b	#$FF-(1<<cfbHold)-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest, hold and frequency freeze flags
 	dDoTracker				; process tracker
 		jsr	dKeyOffFM2(pc)		; send key-off command to YM
 		tst.b	d1			; check if note is being played
@@ -403,7 +403,7 @@ dAMPSnextFM:
 		jmp	dAMPSdoPSG(pc)		; after that, process music PSG channels
 
 .update
-		and.b	#$FF-(1<<cfbHold)-(1<<cfbRest),(a1); clear hold and rest flags
+		and.b	#$FF-(1<<cfbHold)-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest, hold and frequency freeze flags
 	dDoTracker				; process tracker
 		jsr	dKeyOffFM(pc)		; send key-off command to YM
 		tst.b	d1			; check if note is being played
@@ -451,13 +451,16 @@ dUpdateFreqFM:
 		rts
 
 .norest
-		move.b	cDetune(a1),d3		; load detune value to d3
-		ext.w	d3			; extend to word
-		add.w	d3,d2			; add to channel base frequency to d2
 
 	if FEATURE_MODENV
 		jsr	dModEnvProg(pc)		; process modulation envelope
 	endif
+
+		btst	#cfbFreqFrz,(a1)	; check if frequency is frozen
+		bne.s	dUpdateFreqFM2		; if yes, do not add these frequencies in
+		move.b	cDetune(a1),d3		; load detune value to d3
+		ext.w	d3			; extend to word
+		add.w	d3,d2			; add to channel base frequency to d2
 
 	if FEATURE_PORTAMENTO
 		add.w	cPortaFreq(a1),d2	; add portamento speed to frequency

@@ -51,9 +51,17 @@ dNoteToutPSG	macro
 ; ---------------------------------------------------------------------------
 
 dCalcFreq	macro
+		btst	#cfbFreqFrz,(a1)	; check if frequency is frozen
+		beq.s	.nofrz			; if not, branch
+		move.w	cFreq(a1),d2		; load channel base frequency to d2
+		bra.s	.frz
+
+.nofrz
 		move.b	cDetune(a1),d2		; get detune value to d2
 		ext.w	d2			; extend to word
 		add.w	cFreq(a1),d2		; add channel base frequency to it
+
+.frz
     endm
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -107,6 +115,8 @@ dPortamento	macro jump,loop,type
 		move.w	d5,cPortaFreq(a1)	; save portamento frequency back
 
 .nochk
+		btst	#cfbFreqFrz,(a1)	; check if frequency is frozen
+		bne.s	.nowrap			; if yes, do not bother with this
 		add.w	d5,d2			; add it to the current pitch
 
 		if (type=0)|(type=1)
@@ -181,6 +191,9 @@ dModulate	macro jump,loop,type
 
 		add.w	cModFreq(a1),d5		; add modulation frequency to it
 		move.w	d5,cModFreq(a1)		; save as the modulation frequency
+
+		btst	#cfbFreqFrz,(a1)	; check if frequency is frozen
+		bne.s	.porta			; if yes, do not bother with this
 		add.w	d5,d2			; add to channel base frequency
 
 .porta
@@ -191,7 +204,7 @@ dModulate	macro jump,loop,type
 ; Macro for generating fast looping code for modulation and portamento
 ; ---------------------------------------------------------------------------
 
-dGenLoops macro	mode,jump,loop,type
+dGenLoops	macro	mode,jump,loop,type
 	if \type>=0
 		if FEATURE_DACFMVOLENV=0
 			bclr	#cfbVol,(a1)	; check if volume update is needed and clear bit

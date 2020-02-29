@@ -310,15 +310,18 @@ saTranspose	macro transp
 	dc.b $E4, \transp
     endm
 
-; E5xx - Set channel tick multiplier to xx (TICK_MULT - TMULT_CUR)
-ssTickMulCh	macro tick
+; E6xx - Set global tick multiplier to xx (TICK_MULT - TMULT_ALL)
+ssTickMul	macro tick
 	dc.b $E5, \tick-1
     endm
 
-; E6xx - Set global tick multiplier to xx (TICK_MULT - TMULT_ALL)
-ssTickMul	macro tick
-	dc.b $E6, \tick-1
+; FF48xx - Set channel tick multiplier to xx (TICK_MULT - TMULT_CUR)
+ssTickMulCh	macro tick
+	dc.b $FF, $48, \tick-1
     endm
+
+; E6 - Freeze frequency for the next note (FREQ_FREEZE)
+sFqFz =		$E6
 
 ; E7 - Do not attack of next note (HOLD)
 sHold =		$E7

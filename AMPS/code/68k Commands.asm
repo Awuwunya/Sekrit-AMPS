@@ -12,7 +12,7 @@ dCommands:
 		add.b	d1,d1			; quadruple command ID
 		add.b	d1,d1			; since each entry is 4 bytes large
 
-		btst	#cfbCond,(a1)		; check if condition state
+		btst	#cfbCond,cExFlags(a1)	; check if condition state
 		bne.w	.falsecomm		; branch if false
 		jmp	.comm-$80(pc,d1.w)	; jump to appropriate handler
 ; ===========================================================================
@@ -26,8 +26,8 @@ dCommands:
 	bra.w	dcaDetune	; E2 - Add xx to channel frequency displacement (DETUNE)
 	bra.w	dcsTransp	; E3 - Set channel pitch to xx (TRANSPOSE - TRNSP_SET)
 	bra.w	dcaTransp	; E4 - Add xx to channel pitch (TRANSPOSE - TRNSP_ADD)
-	bra.w	dcsTmulCh	; E5 - Set channel tick multiplier to xx (TICK_MULT - TMULT_CUR)
-	bra.w	dcsTmul		; E6 - Set global tick multiplier to xx (TICK_MULT - TMULT_ALL)
+	bra.w	dcsTmul		; E5 - Set global tick multiplier to xx (TICK_MULT - TMULT_ALL)
+	bra.w	dcFqFz		; E6 - Freeze frequency for the next note (FREQ_FREEZE)
 	bra.w	dcHold		; E7 - Do not allow note on/off for next note (HOLD)
 	bra.w	dcVoice		; E8 - Set Voice/sample to xx (INSTRUMENT - INS_C_FM / INS_C_DAC)
 	bra.w	dcsTempoShoes	; E9 - Set music speed shoes tempo to xx (TEMPO - TEMPO_SET_SPEED)
@@ -88,7 +88,7 @@ dCommands:
 	bra.w	dcNoisePSG	; FF 3C - PSG4 mode to xx (PSG_NOISE - PNOIS_AMPS)
 	bra.w	dcCSMOn		; FF 40 - Enable CMS mode with settings (SPC_FM3 - CSM_ON)
 	bra.w	dcCSMOff	; FF 44 - Disable CMS mode (SPC_FM3 - CSM_OFF)
-	bra.w	*		; FF 48 - Enable CMS mode with settings (SPC_FM3 - CSM_ON)
+	bra.w	dcsTmulCh	; FF 48 - Set channel tick multiplier to xx (TICK_MULT - TMULT_CUR)
 	bra.w	*		; FF 4C - Enable CMS mode with settings (SPC_FM3 - CSM_ON)
 
 	if FEATURE_MODTL
@@ -129,8 +129,8 @@ dcskip	macro amount
 	dcskip	1		; E2 - Add xx to channel frequency displacement (DETUNE)
 	dcskip	1		; E3 - Set channel pitch to xx (TRANSPOSE - TRNSP_SET)
 	dcskip	1		; E4 - Add xx to channel pitch (TRANSPOSE - TRNSP_ADD)
-	dcskip	1		; E5 - Set channel tick multiplier to xx (TICK_MULT - TMULT_CUR)
-	dcskip	1		; E6 - Set global tick multiplier to xx (TICK_MULT - TMULT_ALL)
+	dcskip	1		; E5 - Set global tick multiplier to xx (TICK_MULT - TMULT_ALL)
+	bra.w	dcFqFz		; E6 - Freeze frequency for the next note (FREQ_FREEZE)
 	bra.w	dcHold		; E7 - Do not allow note on/off for next note (HOLD)
 	dcskip	1		; E8 - Add xx to music tempo (TEMPO - TEMPO_ADD)
 	dcskip	1		; E9 - Set music tempo to xx (TEMPO - TEMPO_SET)
@@ -312,6 +312,15 @@ dcsTmul:
 
 dcHold:
 		bchg	#cfbHold,(a1)		; flip the channel hold flag
+		rts
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Tracker command for enabling or disabling the hold flag
+; ---------------------------------------------------------------------------
+
+dcFqFz:
+		bchg	#cfbFreqFrz,(a1)	; flip the channel frequency freeze flag
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -1587,7 +1596,7 @@ dcComplexTL:
 ; ---------------------------------------------------------------------------
 
 dcResetCond:
-		bclr	#cfbCond,(a1)		; reset condition flag
+		bclr	#cfbCond,cExFlags(a1)	; reset condition flag
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -1651,7 +1660,7 @@ dcCond:
 		move.b	(a4,d3.w),d3		; load value from communcations byte to d3
 
 dcCondCom:
-		bclr	#cfbCond,(a1)		; set condition to true
+		bclr	#cfbCond,cExFlags(a1)	; set condition to true
 		and.w	#$F0,d4			; get condition value only
 		lsr.w	#2,d4			; shift 2 bits down (each entry is 4 bytes large)
 		cmp.b	(a2)+,d3		; check value against tracker byte
@@ -1662,7 +1671,7 @@ dcCondCom:
 ; ---------------------------------------------------------------------------
 
 .false
-		bset	#cfbCond,(a1)		; set condition to false
+		bset	#cfbCond,cExFlags(a1)	; set condition to false
 
 .cond
 	rts			; T

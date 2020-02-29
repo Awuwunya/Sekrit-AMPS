@@ -92,6 +92,7 @@ cModEnvPos	rs.b 1		; modulation envelope position
 cModEnvSens	rs.b 1		; sensitivity of modulation envelope
 	endif
 
+cExFlags	rs.b 1		; extra channels flags
 cLoop		rs.b 3		; loop counter values
 cSizeSFX	rs.w 0		; size of each SFX track (this also sneakily makes sure the memory is aligned to word always. Additional loop counter may be added if last byte is odd byte)
 cPrio =		__rs-1		; sound effect channel priority. SFX only
@@ -119,9 +120,17 @@ cfbRest		rs.b 1		; set if channel is resting. FM and PSG only
 cfbInt		rs.b 1		; set if interrupted by SFX. Music only
 cfbHold		rs.b 1		; set if playing notes does not trigger note-on's
 cfbMod		rs.b 1		; set if modulation is enabled
-cfbCond		rs.b 1		; set if ignoring most tracker commands
+cfbFreqFrz	rs.b 1		; set if note frequency should be "frozen". Various things do not affect frequency
 cfbVol		rs.b 1		; set if channel should update volume
 cfbRun =	$07		; set if channel is running a tracker
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Bits for cExFlags
+; ---------------------------------------------------------------------------
+
+	rsset 0
+cfbCond		rs.b 1		; set if ignoring most tracker commands
+;cfbRun =	$07		; set if channel is running a tracker
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; TL modulation operator configuration
