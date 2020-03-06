@@ -17,7 +17,9 @@ dNoteToutHandler	macro
 dNoteToutDAC	macro
 	dNoteToutHandler			; include timeout handler
 		moveq	#0,d3			; play stop sample
-		bra.w	dNoteOnDAC2		; ''
+		bsr.w	dNoteOnDAC2		; ''
+		bra.s	.next			; jump to next track
+
 .endt
     endm
 ; ===========================================================================
@@ -185,13 +187,12 @@ dModulate	macro jump,loop,type
 		neg.b	cModStep(a1)		; negate step amount
 
 .norev
-		subq.b	#1,cModCount(a1)	; decrease step counter
 		move.b	cModStep(a1),d5		; get step offset into d5
 		ext.w	d5			; extend to word
-
 		add.w	cModFreq(a1),d5		; add modulation frequency to it
 		move.w	d5,cModFreq(a1)		; save as the modulation frequency
 
+		subq.b	#1,cModCount(a1)	; decrease step counter
 		btst	#cfbFreqFrz,(a1)	; check if frequency is frozen
 		bne.s	.porta			; if yes, do not bother with this
 		add.w	d5,d2			; add to channel base frequency

@@ -451,7 +451,6 @@ dUpdateFreqFM:
 		rts
 
 .norest
-
 	if FEATURE_MODENV
 		jsr	dModEnvProg(pc)		; process modulation envelope
 	endif

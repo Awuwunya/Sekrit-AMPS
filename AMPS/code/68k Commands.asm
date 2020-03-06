@@ -313,10 +313,9 @@ dcsTmul:
 dcHold:
 		bchg	#cfbHold,(a1)		; flip the channel hold flag
 		rts
-
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Tracker command for enabling or disabling the hold flag
+; Tracker command for enabling or disabling the frequency freeze flag
 ; ---------------------------------------------------------------------------
 
 dcFqFz:
