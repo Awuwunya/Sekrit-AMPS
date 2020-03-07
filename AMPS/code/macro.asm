@@ -26,8 +26,11 @@ FEATURE_UNDERWATER =	1	; set to 1 to enable underwater mode
 FEATURE_BACKUP =	1	; set to 1 to enable back-up channels. Used for the 1-up SFX in Sonic 1, 2 and 3K...
 FEATURE_BACKUPNOSFX =	1	; set to 1 to disable SFX while a song is backed up. Used for the 1-up SFX.
 FEATURE_FM6 =		1	; set to 1 to enable FM6 to be used in music
+FEATURE_PSG4 =		1	; set to 1 to enable a separate PSG4 channel
+FEATURE_PSGADSR =	1	; set to 1 to enable ADSR for PSG
 FEATURE_FM3SM =		1	; set to 1 to enable FM3 Special Mode support
 FEATURE_MODTL =		1	; set to 1 to enable TL modulation feature
+FEATURE_STACK_DEPTH =	3	; set the number of slots in music channel stack. At least 3 is recommended
 
 ; Select the tempo algorith.
 ; 0 = Overflow method.
@@ -49,22 +52,22 @@ safe =	1
 cFlags		rs.b 1		; various channel flags, see below
 cType		rs.b 1		; hardware type for the channel
 cData		rs.l 1		; 68k tracker address for the channel
-	if FEATURE_DACFMVOLENV=0
-cEnvPos		rs.b 0		; volume envelope position. PSG only
-	endif
+cStatPSG4	rs.b 0		; PSG4 type value. PSG3 and PSG4 only
 cPanning	rs.b 1		; channel panning and LFO. FM and DAC only. Not used in FM3 op2-op4.
 cDetune		rs.b 1		; frequency detune (offset)
 cPitch		rs.b 1		; pitch (transposition) offset
 cVolume		rs.b 1		; channel volume
 cTick		rs.b 1		; channel tick multiplier
-	if FEATURE_DACFMVOLENV=0
-cVolEnv		rs.b 0		; volume envelope ID. PSG only
+	if FEATURE_PSGADSR
+cADSR		rs.b 0		; channel ADSR ID, PSG only
 	endif
 cSample		rs.b 0		; channel sample ID, DAC only
 cVoice		rs.b 1		; YM2612 voice ID. FM only
 cDuration	rs.b 1		; current note duration
 cLastDur	rs.b 1		; last note duration
 cFreq		rs.w 1		; channel base frequency
+cVolEnv		rs.b 1		; volume envelope ID
+cEnvPos		rs.b 1		; volume envelope position
 
 	if FEATURE_MODULATION
 cModDelay	rs.b 0		; delay before modulation starts
@@ -81,33 +84,21 @@ cPortaFreq	rs.w 1		; frequency offset for portamento.
 cPortaDisp	rs.w 1		; frequency displacement per frame for portamento.
 	endif
 
-	if FEATURE_DACFMVOLENV
-cVolEnv		rs.b 1		; volume envelope ID
-cEnvPos		rs.b 1		; volume envelope position
-	endif
-
 	if FEATURE_MODENV
 cModEnv		rs.b 1		; modulation envelope ID
 cModEnvPos	rs.b 1		; modulation envelope position
 cModEnvSens	rs.b 1		; sensitivity of modulation envelope
 	endif
 
-cExFlags	rs.b 1		; extra channels flags
 cLoop		rs.b 3		; loop counter values
 cSizeSFX	rs.w 0		; size of each SFX track (this also sneakily makes sure the memory is aligned to word always. Additional loop counter may be added if last byte is odd byte)
 cPrio =		__rs-1		; sound effect channel priority. SFX only
-
-	if FEATURE_DACFMVOLENV
-cStatPSG4 =	cPanning	; PSG4 type value. PSG3 only
-	else
-cStatPSG4 =	__rs-2		; PSG4 type value. PSG3 only
-	endif
 
 cGateCur	rs.b 1		; frame counter to note off. Music only
 cGateMain	rs.b 1		; copy of frame counter to note off. Music only
 cStack		rs.b 1		; channel stack pointer. Music only
 		rs.b 1		; unused. Music only
-		rs.l 3		; channel stack data. Music only
+		rs.l FEATURE_STACK_DEPTH; channel stack data. Music only
 cSize		rs.w 0		; size of each music track
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -119,22 +110,74 @@ cfbMode		rs.b 0		; set if in pitch mode, clear if in sample mode. DAC only
 cfbRest		rs.b 1		; set if channel is resting. FM and PSG only
 cfbInt		rs.b 1		; set if interrupted by SFX. Music only
 cfbHold		rs.b 1		; set if playing notes does not trigger note-on's
-cfbMod		rs.b 1		; set if modulation is enabled
 cfbFreqFrz	rs.b 1		; set if note frequency should be "frozen". Various things do not affect frequency
+cfbCond		rs.b 1		; set if ignoring most tracker commands
 cfbVol		rs.b 1		; set if channel should update volume
 cfbRun =	$07		; set if channel is running a tracker
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Bits for cExFlags
+; ADSR data channel configuration
+; ---------------------------------------------------------------------------
+
+	if FEATURE_PSGADSR
+	rsset 0
+adVolume	rs.b 1		; current ADSR volume
+adFlags		rs.b 1		; various ADSR flags
+adSize		rs.b 0		; size of each ADSR
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; ADSR data configuration
 ; ---------------------------------------------------------------------------
 
 	rsset 0
-cfbCond		rs.b 1		; set if ignoring most tracker commands
-;cfbRun =	$07		; set if channel is running a tracker
+aPSG1		rs.b adSize	; data for PSG1
+aPSG2		rs.b adSize	; data for PSG2
+aPSG3		rs.b adSize	; data for PSG3
+	if FEATURE_PSG4
+aPSG4		rs.b adSize	; data for PSG4
+	endif
+aSizeMus	rs.b 0		; size of all data for music channels
+
+	rsset 0
+aSFXPSG1	rs.b adSize	; data for SFX PSG1
+aSFXPSG2	rs.b adSize	; data for SFX PSG2
+aSFXPSG3	rs.b adSize	; data for SFX PSG3
+	if FEATURE_PSG4
+aSFXPSG4	rs.b adSize	; data for SFX PSG4
+	endif
+aSizeSFX	rs.b 0		; size of all data for music channels
+	endif
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Bits for adFlags
+; ---------------------------------------------------------------------------
+
+adpMask =	$03		; mask the phase bits
+
+	rsset 0			; bits 0 and 1
+adpAttack	rs.b 1		; note is currently attacking
+adpDecay	rs.b 1		; note is currently decaying
+adpSustain	rs.b 1		; note is being sustained
+adpRelease	rs.b 1		; note is currently releasing
+
+admMask =	$3C		; mask the mode bits
+
+	rsset 0			; bits 2-5
+admNormal	rs.b 4		; normal mode for ADSR
+admNoAttack	rs.b 4		; attack phase is skipped
+admReAttack	rs.b 4		; repeat attack phase infinitely
+admNoDecay	rs.b 4		; attack and decay phases are skipped
+admReDecay	rs.b 4		; attack phase executed, decay phase is repeated infinitely
+admNoRelease	rs.b 4		; note gets released immediately on note off
+admAttRel	rs.b 4		; note is released right after attack phase ends
+admImm		rs.b 4		; only sustain phase is executed
+
+; bits 7 and 6 used to store accumulator
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; TL modulation operator configuration
 ; ---------------------------------------------------------------------------
+
 	if FEATURE_MODTL
 	rsset 0
 toFlags		rs.b 1		; various TL modulation flags
@@ -200,29 +243,30 @@ ctDAC2 =	(1<<ctbDAC)|$06	; DAC 2
 ctPSG1 =	$80		; PSG 1	- Valid for SFX
 ctPSG2 =	$A0		; PSG 2	- Valid for SFX
 ctPSG3 =	$C0		; PSG 3	- Valid for SFX
-ctPSG4 =	$E0		; PSG 4
+ctPSG4 =	$E0		; PSG 4 - Valid for SFX
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Misc flags
 ; ---------------------------------------------------------------------------
 
-Mus_DAC =	2		; number of DAC channels
-Mus_FM =	5+((FEATURE_FM6<>0)&1)+((FEATURE_FM3SM<>0)&3); number of FM channels (5, 6, 8, or 9)
-Mus_PSG =	3		; number of PSG channels
-Mus_Ch =	Mus_DAC+Mus_FM+Mus_PSG; total number of music channels
-SFX_DAC =	1		; number of DAC SFX channels
-SFX_FM =	3		; number of FM SFX channels
-SFX_PSG =	3		; number of PSG SFX channels
-SFX_Ch =	SFX_DAC+SFX_FM+SFX_PSG; total number of SFX channels
+Mus_DAC =	2			; number of DAC channels
+Mus_HeadFM =	5+((FEATURE_FM6<>0)&1)	; number of FM channels for SMPS2ASM
+Mus_FM =	Mus_HeadFM+((FEATURE_FM3SM<>0)&3); number of FM channels (5, 6, 8, or 9)
+Mus_PSG =	3+((FEATURE_PSG4<>0)&1)	; number of PSG channels
+Mus_Ch =	Mus_DAC+Mus_FM+Mus_PSG	; total number of music channels
+SFX_DAC =	1			; number of DAC SFX channels
+SFX_FM =	3			; number of FM SFX channels
+SFX_PSG =	3+((FEATURE_PSG4<>0)&1)	; number of PSG SFX channels
+SFX_Ch =	SFX_DAC+SFX_FM+SFX_PSG	; total number of SFX channels
 
-VoiceRegs =	29		; total number of registers inside of a voice
-VoiceTL =	VoiceRegs-4	; location of voice TL levels
+VoiceRegs =	29			; total number of registers inside of a voice
+VoiceTL =	VoiceRegs-4		; location of voice TL levels
 	if FEATURE_FM3SM
-VoiceRegsSM =	8		; total number of registers to write for FM3 Special Mode voice
+VoiceRegsSM =	8			; total number of registers to write for FM3 Special Mode voice
 	endif
 
-MaxPitch =	$1000		; this is the maximum pitch Dual PCM is capable of processing
-Z80E_Read =	$0018		; this is used by Dual PCM internally but we need this for macros
+MaxPitch =	$1000			; this is the maximum pitch Dual PCM is capable of processing
+Z80E_Read =	$0018			; this is used by Dual PCM internally but we need this for macros
 
 ; NOTE: There is no magic trick to making Dual PCM play samples at higher rates.
 ; These values are only here to allow you to give lower pitch samples higher
@@ -268,13 +312,20 @@ mLastCue	rs.b 1		; last YM Cue the sound driver was accessing
 		rs.w 0		; align channel data
 
 	if FEATURE_MODTL
-mTLSFX		rs.b tSizeSFX	; TL modulation data
+mTLSFX		rs.b tSizeSFX	; TL modulation data for SFX
+	endif
+	if FEATURE_PSGADSR
+mADSRSFX	rs.b aSizeSFX	; ADSR data for SFX
 	endif
 
 mBackUpArea	rs.w 0		; this is where backup stuff starts
 	if FEATURE_MODTL
 mTL		rs.b tSizeMus	; TL modulation data
 	endif
+	if FEATURE_PSGADSR
+mADSR		rs.b aSizeMus	; ADSR data
+	endif
+
 mDAC1		rs.b cSize	; DAC 1 data
 mDAC2		rs.b cSize	; DAC 2 data
 mFM1		rs.b cSize	; FM 1 data
@@ -300,6 +351,9 @@ mFM6		rs.b cSize	; FM 6 data
 mPSG1		rs.b cSize	; PSG 1 data
 mPSG2		rs.b cSize	; PSG 2 data
 mPSG3		rs.b cSize	; PSG 3 data
+	if FEATURE_PSG4
+mPSG4		rs.b cSize	; PSG 4 data
+	endif
 mSFXDAC1	rs.b cSizeSFX	; SFX DAC 1 data
 mSFXFM3		rs.b cSizeSFX	; SFX FM 3 data
 mSFXFM4		rs.b cSizeSFX	; SFX FM 4 data
@@ -307,6 +361,9 @@ mSFXFM5		rs.b cSizeSFX	; SFX FM 5 data
 mSFXPSG1	rs.b cSizeSFX	; SFX PSG 1 data
 mSFXPSG2	rs.b cSizeSFX	; SFX PSG 2 data
 mSFXPSG3	rs.b cSizeSFX	; SFX PSG 3 data
+	if FEATURE_PSG4
+mSFXPSG4	rs.b cSizeSFX	; SFX PSG 4 data
+	endif
 mChannelEnd	rs.w 0		; used to determine where channel RAM ends
 
 	if FEATURE_BACKUP
@@ -314,6 +371,10 @@ mBackUpLoc	rs.w 0		; this is where backup stuff is loaded
 	if FEATURE_MODTL
 mBackTL		rs.b tSizeMus	; back-up for TL modulation data
 	endif
+	if FEATURE_PSGADSR
+mBackADSR	rs.b aSizeMus	; back-up ADSR data
+	endif
+
 mBackDAC1	rs.b cSize	; back-up DAC 1 data
 mBackDAC2	rs.b cSize	; back-up DAC 2 data
 mBackFM1	rs.b cSize	; back-up FM 1 data
@@ -337,6 +398,9 @@ mBackFM6	rs.b cSize	; back-up FM 6 data
 mBackPSG1	rs.b cSize	; back-up PSG 1 data
 mBackPSG2	rs.b cSize	; back-up PSG 2 data
 mBackPSG3	rs.b cSize	; back-up PSG 3 data
+	if FEATURE_PSG4
+mBackPSG4	rs.b cSize	; back-up PSG 4 data
+	endif
 
 mBackTempoMain	rs.b 1		; back-up music normal tempo
 mBackTempoSpeed	rs.b 1		; back-up music speed shoes tempo

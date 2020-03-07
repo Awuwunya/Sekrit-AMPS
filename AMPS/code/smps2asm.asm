@@ -29,6 +29,21 @@ _num =		$80
 	enum nC7,nCs7,nD7,nEb7,nE7,nF7,nFs7,nG7,nAb7,nA7,nBb7
 nHiHat =	nA6
 ; ---------------------------------------------------------------------------------------------
+; Note Equates for PSG4
+; ---------------------------------------------------------------------------------------------
+
+		rsset nRst
+		rs.w 1		; rest channel
+nPeri10		rs.w 1		; periodic noise at pitch $10
+nPeri20		rs.w 1		; periodic noise at pitch $20
+nPeri40		rs.w 1		; periodic noise at pitch $40
+nPeriPSG3	rs.w 1		; periodic noise with pitch from PSG3
+nWhite10	rs.w 1		; white noise at pitch $10
+nWhite20	rs.w 1		; white noise at pitch $20
+nWhite40	rs.w 1		; white noise at pitch $40
+nWhitePSG3	rs.w 1		; white noise with pitch from PSG3
+n4Last		rs.w 0		; used for safe mode
+; ---------------------------------------------------------------------------------------------
 ; Header Macros
 ; ---------------------------------------------------------------------------------------------
 
@@ -43,24 +58,18 @@ sHeaderInitSFX	macro
     endm
 
 ; Header - Set up Channel Usage
-sHeaderCh	macro fm,psg
+sHeaderCh	macro fmc,psgc
 	if narg=2
-		dc.b \psg-1, \fm-1
-		if \psg>3
-			inform 2,"You sure there are \psg PSG channels?"
+		dc.b \psgc-1, \fmc-1
+		if \fmc>Mus_HeadFM
+			inform 1,"You sure there are so many fm FM channels?"
 		endif
 
-		if FEATURE_FM6
-			if \fm>6
-				inform 2,"You sure there are \fm FM channels?"
-			endif
-		else
-			if \fm>5
-				inform 2,"You sure there are \fm FM channels?"
-			endif
+		if \psgc>Mus_PSG
+			inform 1,"You sure there are so many psg PSG channels?"
 		endif
 	else
-		dc.b \fm-1
+		dc.b \fmc-1
 	endif
     endm
 
@@ -109,6 +118,26 @@ sHeaderSFX	macro flags,type,loc,pitch,vol
 	dc.b (\pitch)&$FF,(\vol)&$FF
     endm
 ; ---------------------------------------------------------------------------------------------
+; Macros for PSG instruments
+; ---------------------------------------------------------------------------------------------
+
+; Patches - ADSR data
+;   mode -> sets the flags used for ADSR. Bit7 is always set.
+;   atkvol -> Volume to attack to (higher = quieter)
+;   atkdelta -> How fast to attack. 2.6 fixed point format
+;   decayvol -> Volume to decay to (higher = quieter)
+;   decaydelta -> How fast to decay. 2.6 fixed point format
+;   releasedelta -> How fast to release. 2.6 fixed point format
+
+spADSR		macro name, mode, atkvol, atkdelta, decayvol, decaydelta, releasedelta
+a\name =	sPatNum
+sPatNum =	sPatNum+1
+
+	dc.b \mode, 0
+	dc.b \atkdelta, \atkvol, \decaydelta, \decayvol, \releasedelta
+	dc.b 0
+    endm
+; ---------------------------------------------------------------------------------------------
 ; Macros for FM instruments
 ; Patches - Feedback
 ; ---------------------------------------------------------------------------------------------
@@ -130,6 +159,7 @@ sPatNum =	sPatNum+1
 spAl =		\val
     endm
 
+; Patches - Feedback
 spFeedback	macro val
 spFe =		\val
     endm
@@ -285,6 +315,7 @@ sPan		macro pan, ams, fms
 
 	elseif narg=2
 		dc.b $E0, \pan|\ams
+
 	else
 		dc.b $E0, \pan|(\ams<<4)|\fms
 	endif
@@ -407,6 +438,10 @@ sModAMPS	macro wait, speed, step, count
 
 sModData	macro wait, speed, step, count
 	dc.b \speed, \count, \wait, \step
+
+	if speed=0
+		inform 1,"Modulation speed is 0! This is not valid for modulation and will instead disable it."
+	endif
     endm
 
 ; F1xx - Set portamento speed to xx frames. 0 means portamento is disabled (PORTAMENTO)
@@ -511,6 +546,11 @@ sCondReg	macro index, cond, val
 ; FF24xx - Play another music/sfx (SND_CMD)
 sPlayMus	macro id
 	dc.b $FF,$24, \id
+    endm
+
+; FF28xx - Set ADSR mode to xx (ADSR - ADSR_MODE)
+ssModeADSR	macro mode
+	dc.b $FF,$28, \mode
     endm
 
 ; FF2Cxxxx - Keep looping back to xxxx each time the SFX is being played (CONT_SFX)
@@ -660,7 +700,6 @@ sCheck		macro
 ; ---------------------------------------------------------------------------------------------
 
 snOff =		$00			; disables PSG3 noise mode.
-
 _num =		$E0
 	enum snPeri10, snPeri20, snPeri40, snPeriPSG3
 	enum snWhite10,snWhite20,snWhite40,snWhitePSG3

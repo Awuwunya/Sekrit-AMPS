@@ -4,7 +4,7 @@
 ; make it easier to debug built ROMS! If you would like easier
 ; assistance from Natsumi, please keep this section intact!
 ; ---------------------------------------------------------------------------
-	dc.b "AMPS-x1.1"		; ident str
+	dc.b "AMPS-x1.2"		; ident str
 
 	if safe
 		dc.b "s"		; safe mode enabled
@@ -15,6 +15,14 @@
 
 	if FEATURE_FM6
 		dc.b "F6"		; FM6 enabled
+	endif
+
+	if FEATURE_PSG4
+		dc.b "P4"		; PSG4 enabled
+	endif
+
+	if FEATURE_PSGADSR
+		dc.b "PA"		; PSG ADSR enabled
 	endif
 
 	if FEATURE_SFX_MASTERVOL
@@ -52,7 +60,6 @@
 	if FEATURE_FM3SM
 		dc.b "S3"		; FM3 special mode
 	endif
-
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Define music and SFX
@@ -183,6 +190,7 @@ ModEnvs_End:
 ; Include music, sound effects and voice table
 ; ---------------------------------------------------------------------------
 
+	include "AMPS/ADSR.s2a"		; include universal ADSR bank
 	include "AMPS/Voices.s2a"	; include universal Voice bank
 	opt ae-				; disable automatic evens
 

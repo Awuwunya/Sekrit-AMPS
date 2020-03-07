@@ -1,0 +1,4 @@
+dBankADSR =	*-8
+aNone =		0
+sPatNum =	1
+;	spADSR	Test, admNormal,	$00, $68, $10, $10, $23		; $01 - test voice (unused)

@@ -471,6 +471,9 @@ dFMtypeVals:	dc.b ctFM1, ctFM2, ctFM3, ctFM4, ctFM5
 		dc.b ctFM6
 	endif
 dPSGtypeVals:	dc.b ctPSG1, ctPSG2, ctPSG3
+	if FEATURE_PSG4
+		dc.b ctPSG4
+	endif
 		even
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -629,6 +632,12 @@ dPlaySnd_SFX:
 		cmp.b	cPrio(a1),d5		; check if this sound effect has higher priority
 		blo.s	.skip			; if not, we can not override it
 
+	if FEATURE_PSGADSR
+		lea	dSFXADSRtbl-8(pc),a3	; get PSG ADSR table address to a3
+		move.w	(a3,d3.w),a3		; load the PSG ADSR entry this channel uses
+		move.w	#$7F00|admNormal|adpRelease,(a3); set to default value
+	endif
+
 		move.w	(a5,d3.w),a3		; get the music channel we should override
 		bset	#cfbInt,(a3)		; override music channel with sound effect
 		ori.b	#$1F,d4			; add volume update and max volume to channel type
@@ -637,6 +646,10 @@ dPlaySnd_SFX:
 		cmpi.b	#ctPSG3|$1F,d4		; check if we sent command about PSG3
 		bne.s	.clearCh		; if not, skip
 		move.b	#ctPSG4|$1F,dPSG	; send volume mute command for PSG4 to PSG
+
+	if FEATURE_PSGADSR
+		bset	#cfbInt,mPSG4+cFlags.w	; override music PSG4 too
+	endif
 
 .clearCh
 		move.w	a1,a3			; copy sound effect channel RAM pointer to a3
@@ -708,23 +721,43 @@ dPlaySnd_SFX:
 ; pointers for music channels SFX can override and addresses of SFX channels
 ; ---------------------------------------------------------------------------
 
-dSFXoffList:	dc.w mSFXFM3			; FM3
-		dc.w mSFXDAC1			; DAC1
-		dc.w mSFXFM4			; FM4
-		dc.w mSFXFM5			; FM5
-		dc.w mSFXPSG1			; PSG1
-		dc.w mSFXPSG2			; PSG2
-		dc.w mSFXPSG3			; PSG3
-		dc.w mSFXPSG3			; PSG4
+	if FEATURE_PSGADSR
+dSFXADSRtbl:
+		dc.w mADSRSFX+aSFXPSG1		; SFX PSG1
+		dc.w mADSRSFX+aSFXPSG2		; SFX PSG2
+		dc.w mADSRSFX+aSFXPSG3		; SFX PSG3
+		if FEATURE_PSG4
+			dc.w mADSRSFX+aSFXPSG4	; SFX PSG4
+		else
+			dc.w mADSRSFX+aSFXPSG3	; SFX PSG4
+		endif
+	endif
 
-dSFXoverList:	dc.w mFM3			; SFX FM3
-		dc.w mDAC1			; SFX DAC1
-		dc.w mFM4			; SFX FM4
-		dc.w mFM5			; SFX FM5
-		dc.w mPSG1			; SFX PSG1
-		dc.w mPSG2			; SFX PSG2
-		dc.w mPSG3			; SFX PSG3
-		dc.w mPSG3			; SFX PSG4
+dSFXoffList:	dc.w mSFXFM3			; SFX FM3
+		dc.w mSFXDAC1			; SFX DAC1
+		dc.w mSFXFM4			; SFX FM4
+		dc.w mSFXFM5			; SFX FM5
+		dc.w mSFXPSG1			; SFX PSG1
+		dc.w mSFXPSG2			; SFX PSG2
+		dc.w mSFXPSG3			; SFX PSG3
+	if FEATURE_PSG4
+		dc.w mSFXPSG4			; SFX PSG4
+	else
+		dc.w mSFXPSG3			; SFX PSG4
+	endif
+
+dSFXoverList:	dc.w mFM3			; FM3
+		dc.w mDAC1			; DAC1
+		dc.w mFM4			; FM4
+		dc.w mFM5			; FM5
+		dc.w mPSG1			; PSG1
+		dc.w mPSG2			; PSG2
+		dc.w mPSG3			; PSG3
+	if FEATURE_PSG4
+		dc.w mPSG4			; PSG4
+	else
+		dc.w mPSG3			; PSG4
+	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Play queued command
@@ -774,7 +807,7 @@ dFadeCommands:
 ; ---------------------------------------------------------------------------
 
 dPlaySnd_StopSFX:
-		moveq	#SFX_Ch,d0		; load num of SFX channels to d0
+		moveq	#SFX_Ch-1,d0		; load num of SFX channels to d0
 		lea	mSFXDAC1.w,a1		; start from SFX DAC 1
 
 .loop
@@ -786,6 +819,7 @@ dPlaySnd_StopSFX:
 .notrack
 		add.w	#cSizeSFX,a1		; go to next channel
 		dbf	d0,.loop		; repeat for each channel
+	dResetADSR	a4, d6, 2		; reset ADSR data for PSG SFX
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -815,6 +849,7 @@ dStopMusic:
 		lea	mVctMus.w,a4		; load driver RAM start to a1
 		move.b	mMasterVolDAC.w,d5	; load DAC master volume to d4
 	dCLEAR_MEM	mChannelEnd-mVctMus, 32	; clear this block of memory with 32 byts per loop
+	dResetADSR	a4, d6, 3		; reset ADSR data for PSG
 
 	if safe=1
 		clr.b	msChktracker.w		; if in safe mode, also clear the check tracker variable!
@@ -878,21 +913,6 @@ dUpdateVolumeAll:
 		or.b	d6,.ch.w		; request channel volume update
 .ch =		.ch+cSizeSFX			; go to next channel
 	endr
-		rts
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Enable speed shoes mode
-; ---------------------------------------------------------------------------
-
-dPlaySnd_ShoesOn:
-		bset	#mfbSpeed,mFlags.w	; enable speed shoes flag
-		move.b	mTempoSpeed.w,mTempoCur.w; set tempo accumulator/counter to speed shoes one
-		move.b	mTempoSpeed.w,mTempo.w	; set main tempor to speed shoes one
-
-	if FEATURE_BACKUP
-		move.b	mBackTempoSpeed.w,mBackTempoCur.w; do the same for backup tempos
-		move.b	mBackTempoSpeed.w,mBackTempo.w
-	endif
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -969,3 +989,19 @@ dReqVolUpMusicFM:
 
 locret_ReqVolUp:
 		rts
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Enable speed shoes mode
+; ---------------------------------------------------------------------------
+
+dPlaySnd_ShoesOn:
+		bset	#mfbSpeed,mFlags.w	; enable speed shoes flag
+		move.b	mTempoSpeed.w,mTempoCur.w; set tempo accumulator/counter to speed shoes one
+		move.b	mTempoSpeed.w,mTempo.w	; set main tempor to speed shoes one
+
+	if FEATURE_BACKUP
+		move.b	mBackTempoSpeed.w,mBackTempoCur.w; do the same for backup tempos
+		move.b	mBackTempoSpeed.w,mBackTempo.w
+	endif
+		rts
+; ===========================================================================

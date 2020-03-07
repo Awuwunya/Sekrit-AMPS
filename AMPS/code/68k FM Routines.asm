@@ -466,7 +466,7 @@ dUpdateFreqFM:
 	endif
 
 	if FEATURE_MODULATION
-		btst	#cfbMod,(a1)		; check if channel is modulating
+		tst.b	cModSpeed(a1)		; check if channel is modulating
 		beq.s	dUpdateFreqFM2		; if not, branch
 		add.w	cModFreq(a1),d2		; add channel modulation frequency offset to d2z
 	endif

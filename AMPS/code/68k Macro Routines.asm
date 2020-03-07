@@ -18,7 +18,7 @@ dNoteToutDAC	macro
 	dNoteToutHandler			; include timeout handler
 		moveq	#0,d3			; play stop sample
 		bsr.w	dNoteOnDAC2		; ''
-		bra.s	.next			; jump to next track
+		bra.w	.next			; jump to next track
 
 .endt
     endm
@@ -39,11 +39,21 @@ dNoteToutFM	macro
 ; Note timout handler macro for PSG
 ; ---------------------------------------------------------------------------
 
-dNoteToutPSG	macro
+dNoteToutPSG	macro	addr
 	dNoteToutHandler			; include timeout handler
 		or.b	#(1<<cfbRest)|(1<<cfbVol),(a1); set channel to resting and request a volume update (update on next note-on)
-		bsr.w	dMutePSGmus		; mute PSG channel
+
+		if FEATURE_PSGADSR
+			jsr	dKeyOffPSG(pc)	; key off PSG channel
+		else
+			jsr	dMutePSGmus(pc)	; mute PSG channel
+		endif
+
+	if narg=0
 		bra.w	.next			; jump to next track
+	else
+		jmp	\addr(pc)		; jump directly to address
+	endif
 .endt
     endm
 ; ===========================================================================
@@ -157,7 +167,7 @@ dPortamento	macro jump,loop,type
 
 dModulate	macro jump,loop,type
 	if FEATURE_MODULATION
-		btst	#cfbMod,(a1)		; check if modulation is active
+		tst.b	cModSpeed(a1)		; check if modulation is active
 		beq.s	.noret			; if not, update volume and return
 		tst.b	cModDelay(a1)		; check if there is delay left
 		beq.s	.started		; if not, modulate!
@@ -232,7 +242,7 @@ dGenLoops	macro	mode,jump,loop,type
 ; Macro for processing the tracker
 ; ---------------------------------------------------------------------------
 
-dDoTracker	macro
+dDoTracker	macro	nf
 		move.l	cData(a1),a2		; grab tracker address
 	if safe=1
 		AMPS_Debug_TrackUpd		; check if this address is valid
@@ -248,7 +258,7 @@ dDoTracker	macro
 		bra.s	.next			; however, for example sStop will make us return here.
 
 .notcomm
-	if FEATURE_PORTAMENTO
+	if FEATURE_PORTAMENTO&narg=0
 		move.w	cFreq(a1),-(sp)		; we need to know the last frequency in portamento mode, so store it in stack
 	endif
     endm
@@ -257,11 +267,11 @@ dDoTracker	macro
 ; Macro for playing a note, and setting up for it (software updates only)
 ; ---------------------------------------------------------------------------
 
-dProcNote	macro sfx, chan
+dProcNote	macro	sfx, chan
 		move.l	a2,cData(a1)		; save tracker address
 		move.b	cLastDur(a1),cDuration(a1); copy stored duration
 
-	if FEATURE_PORTAMENTO
+	if FEATURE_PORTAMENTO&(\chan<>4)
 		move.w	(sp)+,d1		; load the last frequency to d2
 		if \chan<=0
 			beq.s	.noporta	; if it was not 0, branch
@@ -332,9 +342,35 @@ dProcNote	macro sfx, chan
 .noporta
 	endif
 
-	if FEATURE_MODULATION|(\sfx=0)|(\chan=1)
+	if ((\chan=1)|(\chan=4))&FEATURE_PSGADSR
+		btst	#cfbHold,(a1)		; check if note is held
+		bne.w	.endpn			; if yes, skip dis
+		btst	#cfbRest,(a1)		; check if resting
+		bne.s	.noadsrf		; if yes, skip dis
+
+		moveq	#admMask,d4		; prepare mode bits to d4
+		and.b	adFlags(a3),d4		; get only mode to d4
+
+		lea	dPhaseTableADSR(pc),a4	; load phase table to a4
+		move.b	3(a4,d4.w),d4		; load the initial flags to d4
+		move.b	d4,adFlags(a3)		; and save to ADSR as well...
+
+		and.b	#adpMask,d4		; get only phase to d4
+		cmp.b	#adpSustain,d4		; check if sustain or release
+		blo.s	.noadsrf		; branch if not
+
+		moveq	#0,d4
+		move.b	cADSR(a1),d4		; load ADSR to d4
+		lsl.w	#3,d4			; multiply offset by 8
+		lea	dBankADSR(pc),a4	; load ADSR bank address to a4
+		move.b	5(a4,d4.w),(a3)		; load decay volume from ADSR to volume byte!
+
+.noadsrf
+	endif
+
+	if FEATURE_MODULATION|(\sfx=0)|(\chan=1)|(\chan=4)
 		btst	#cfbHold,(a1)		; check if we are holding
-		if (chan=0)&(FEATURE_MODTL<>0)
+		if (\chan=0)&(FEATURE_MODTL<>0)
 			bne.w	.endpn		; if we are, branch
 		else
 			bne.s	.endpn		; if we are, branch
@@ -345,7 +381,7 @@ dProcNote	macro sfx, chan
 		move.b	cGateMain(a1),cGateCur(a1); copy note timeout value
 	endif
 
-	if FEATURE_DACFMVOLENV|(\chan=1)
+	if FEATURE_DACFMVOLENV|(\chan=1)|(\chan=4)
 		clr.b	cEnvPos(a1)		; clear envelope position if PSG channel
 	endif
 
@@ -383,7 +419,7 @@ dProcNote	macro sfx, chan
 	endif
 
 	if FEATURE_MODULATION
-		btst	#cfbMod,(a1)		; check if modulation is enabled
+		tst.b	cModSpeed(a1)		; check if modulation is enabled
 		beq.s	.endpn			; if not, branch
 
 		move.l	cMod(a1),a4		; get modulation data address
@@ -429,7 +465,7 @@ dTrackNoteDAC	macro
 ; Macro for doing keying-on FM channel
 ; ---------------------------------------------------------------------------
 
-dKeyOnFM	macro
+dKeyOnFM	macro	sfx
 	if narg=0
 		btst	#cfbInt,(a1)		; check if overridden by sfx
 		bne.s	.k			; if so, do not note on
@@ -529,14 +565,20 @@ dGetFreqPSG	macro
 		bhs.s	.norest			; branch if note wasnt $80 (rest)
 		or.b	#(1<<cfbRest)|(1<<cfbVol),(a1); set channel to resting and request a volume update (update on next note-on)
 		move.w	#-1,cFreq(a1)		; set invalid PSG frequency
-		jsr	dMutePSGmus(pc)		; mute this PSG channel
+
+		if FEATURE_PSGADSR
+			jsr	dKeyOffPSG(pc)	; key off PSG channel
+		else
+			jsr	dMutePSGmus(pc)	; mute PSG channel
+		endif
 		bra.s	.freqgot
 
 .norest
 		add.b	cPitch(a1),d1		; add pitch offset to note
 		andi.w	#$7F,d1			; keep within $80 notes
 		add.w	d1,d1			; double offset (each entry is a word)
-		move.w	(a3,d1.w),cFreq(a1)	; load and save the requested frequency
+		lea	dFreqPSG(pc),a4		; load PSG frequency table to a4
+		move.w	(a4,d1.w),cFreq(a1)	; load and save the requested frequency
 
 	if safe=1
 		AMPS_Debug_NotePSG		; check if the note was valid
@@ -555,7 +597,7 @@ dStopChannel	macro	stop
 		btst	#ctbDAC,cType(a1)	; check if this was a DAC channel
 		bne.s	.muteDAC		; if we are, skip
 
-	if stop=0
+	if \stop<=0
 		jsr	dKeyOffFM(pc)		; send key-off command to YM
 		bra.s	.cont
 	else
@@ -564,24 +606,53 @@ dStopChannel	macro	stop
 ; ---------------------------------------------------------------------------
 
 .mutePSG
-	if stop=0
-		jsr	dMutePSGmus(pc)		; mute PSG channel
+	if \stop<=0
+		if FEATURE_PSGADSR&(\stop=0)
+			jsr	dKeyOffPSG(pc)	; key off PSG channel
+		else
+			jsr	dMutePSGmus(pc)	; mute PSG channel
+		endif
 		bra.s	.cont
 	else
-		jmp	dMutePSGmus(pc)		; mute PSG channel
+		if FEATURE_PSGADSR
+			jmp	dKeyOffPSG(pc)	; key off PSG channel
+		else
+			jmp	dMutePSGmus(pc)	; mute PSG channel
+		endif
 	endif
 ; ---------------------------------------------------------------------------
 
 .muteDAC
-	if stop=0
+	if \stop<=0
 		jsr	dMuteDACmus(pc)		; mute DAC channel
 	else
 		jmp	dMuteDACmus(pc)		; mute DAC channel
 	endif
 
 .cont
-	if stop<>0
-		rts
+    endm
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Macros for resetting ADSR memory
+; ---------------------------------------------------------------------------
+
+dResetADSR	macro areg, dreg, mode
+	move.w	#$7F00|admNormal|adpRelease,\dreg; load default value to dreg
+
+	if \mode&1
+		lea	mADSR.w,\areg		; load ADSR address to areg
+
+		rept aSizeMus/adSize
+			move.w	\dreg,(\areg)+	; reset all music channel data
+		endr
+	endif
+
+	if \mode&2
+		lea	mADSRSFX.w,\areg	; load ADSR SFX address to areg
+
+		rept aSizeSFX/adSize
+			move.w	\dreg,(\areg)+	; reset all sfx channel data
+		endr
 	endif
     endm
 ; ===========================================================================
