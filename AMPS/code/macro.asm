@@ -181,9 +181,10 @@ admImm		rs.b 4		; only sustain phase is executed
 	if FEATURE_MODTL
 	rsset 0
 toFlags		rs.b 1		; various TL modulation flags
-toModDelay	rs.b 1		; delay before modulation starts
+toVol		rs.b 1		; volume offset for TL operator
 toModVol 	rs.b 0		; modulation volume offset
 toMod		rs.l 1		; modulation data address
+toModDelay	rs.b 1		; delay before modulation starts
 toModSpeed	rs.b 1		; number of frames til next modulation step
 toModStep	rs.b 1		; modulation volume offset per step
 toModCount	rs.b 1		; number of modulation steps until reversal
@@ -203,7 +204,7 @@ tFM3		rs.b toSize4	; data for FM3
 tFM4		rs.b toSize4	; data for FM4
 tFM5		rs.b toSize4	; data for FM5
 	if FEATURE_FM6
-tFM6		rs.b cSize	; data for FM6
+tFM6		rs.b toSize4	; data for FM6
 	endif
 tSizeMus 	rs.w 0		; size of all data for music channels
 

@@ -103,11 +103,13 @@ tlmod	macro name
 	tlmod	dcModOnTL	; FF 6x - Turn on TL Modulation for operator x (TL_MOD - MODS_ON)
 	tlmod	dcModTL		; FF 7x - Modulation for operator x (TL_MOD - MOD_SETUP)
 	tlmod	dcVolEnvTL	; FF 8y - Set TL volume envelope to xx for operator y (TL_MOD - FM_VOLENV)
+	tlmod	dcaVolTL	; FF 9y - Add xx to volume for operator y (TL_MOD - VOL_ADD_TL)
+	tlmod	dcsVolTL	; FF Ay - Set volume to xx for operator y (TL_MOD - VOL_SET_TL)
 	endif
 
 	if safe=1
-		bra.w	dcFreeze	; FF 90 - Freeze CPU. Debug flag (DEBUG_STOP_CPU)
-		bra.w	dcTracker	; FF 94 - Bring up tracker debugger at end of frame. Debug flag (DEBUG_PRINT_TRACKER)
+		bra.w	dcFreeze	; FF B0 - Freeze CPU. Debug flag (DEBUG_STOP_CPU)
+		bra.w	dcTracker	; FF B4 - Bring up tracker debugger at end of frame. Debug flag (DEBUG_PRINT_TRACKER)
 	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -986,17 +988,16 @@ dUpdateVoiceFM:
 
 		moveq	#4-1,d1			; prepare 4 operators to d1
 		move.b	cVolume(a1),d3		; load FM channel volume to d3
+		ext.w	d3			; extend to word
 
 	if FEATURE_SFX_MASTERVOL=0
 		cmpa.w	#mSFXDAC1,a1		; is this a SFX channel
 		bhs.s	.noover			; if so, do not add master volume!
 	endif
 
-		add.b	mMasterVolFM.w,d3	; add master FM volume to d3
-	if FEATURE_MODTL=0
-		bpl.s	.noover			; if volume did not overflow, skip
-		moveq	#$7F,d3			; force FM volume to silence
-	endif
+		move.b	mMasterVolFM.w,d6	; load master FM volume to d6
+		ext.w	d6			; extend to word
+		add.w	d6,d3			; add to volume
 
 .noover
 	if FEATURE_UNDERWATER
@@ -1010,12 +1011,7 @@ dUpdateVoiceFM:
 		move.b	(a6,d4.w),d4		; get the value from table
 		move.b	d4,d6			; copy to d6
 		and.w	#7,d4			; mask out extra stuff
-
-		add.b	d4,d3			; add algorithm to Total Level carrier offset
-	if FEATURE_MODTL=0
-		bpl.s	.uwdone			; if volume did not overflow, skip
-		moveq	#$7F,d3			; force FM volume to silence
-	endif
+		add.w	d4,d3			; add algorithm to Total Level carrier offset
 
 .uwdone
 	endif
@@ -1024,31 +1020,32 @@ dUpdateVoiceFM:
 
 .tlloop
 		move.b	(a4)+,d5		; get Total Level value from voice to d5
+		ext.w	d5			; extend to word
 		bpl.s	.noslot			; if slot operator bit was not set, branch
-
-	if FEATURE_MODTL
 		and.w	#$7F,d5			; get rid of sign bit (ugh)
-		add.b	d3,d5			; add carrier offset to loaded value
-	else
-		add.b	d3,d5			; add carrier offset to loaded value
-		bmi.s	.slot			; if we did not overflow, branch
-		moveq	#-1,d5			; cap to silent volume
-	endif
-
+		add.w	d3,d5			; add carrier offset to loaded value
 	if FEATURE_UNDERWATER
 		bra.s	.slot
 	endif
 
 .noslot
 	if FEATURE_UNDERWATER
-		add.b	d6,d5			; add modulator offset to loaded value
+		add.w	d6,d5			; add modulator offset to loaded value
 	endif
 
 .slot
 	if FEATURE_MODTL
-		jsr	ModulateTL(pc)		; do TL modulation on this channel
+		move.b	toVol(a3),d4		; load volume offset to d4
+		ext.w	d4			; extend to word
+		add.w	d4,d5			; add to volume in d5
+		jsr	dModulateTL(pc)		; do TL modulation on this channel
 	endif
 
+		cmp.w	#$80,d5			; check if volume is out of range
+		bls.s	.nocap			; if not, branch
+		spl	d5			; if positive (above $7F), set to $FF. Otherwise, set to $00
+
+.nocap
 		move.b	d5,(a5)+		; save the Total Level value
 		move.b	(a6)+,d4		; load register to d4
 		or.b	d2,d4			; add channel offset to register
@@ -1186,6 +1183,7 @@ dUpdateVoiceFM3:
 	endif
 
 		move.b	(a4)+,d5		; get Total Level value from voice to d5
+		ext.w	d5			; extend to word
 		bpl.s	.noslot			; if slot operator bit was not set, branch
 
 	if FEATURE_MODTL
@@ -1208,7 +1206,10 @@ dUpdateVoiceFM3:
 
 .slot
 	if FEATURE_MODTL
-		jsr	ModulateTL(pc)		; do TL modulation on this channel
+		move.b	toVol(a3),d4		; load volume offset to d4
+		ext.w	d4			; extend to word
+		add.w	d4,d5			; add to volume in d5
+		jsr	dModulateTL(pc)		; do TL modulation on this channel
 	endif
 
 		move.b	d5,(a5)+		; save the Total Level value
@@ -1548,6 +1549,23 @@ tlmodrt		macro update, name
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
+; Tracker command for adding volume
+; ---------------------------------------------------------------------------
+
+	tlmodrt	1, dcaVolTL			; generate call structure to this routine
+		move.b	(a2)+,d3		; load volume to d4
+		add.b	d3,toVol(a3)		; add d4 to volume
+		rts
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Tracker command for setting volume
+; ---------------------------------------------------------------------------
+
+	tlmodrt	1, dcsVolTL			; generate call structure to this routine
+		move.b	(a2)+,toVol(a3)		; set volume to xx
+		rts
+; ===========================================================================
+; ---------------------------------------------------------------------------
 ; Routine for resetting TL volume envelope
 ; ---------------------------------------------------------------------------
 
@@ -1633,6 +1651,8 @@ dccte		macro extra, first, second
 	dccte	0, dcResetVolEnvTL, dcModOnTL_Normal	; %0111: Enable modulation and reset volume envelope
 	dccte	1, dcVolEnvTL_Normal, dcModOffTL_Normal	; %1000; Setup volume envelope and disable modulation
 	dccte	0, dcVolEnvTL_Normal, dcModOnTL_Normal	; %1001; Setup volume envelope and enable modulation
+	dccte	0, dcaVolTL_Normal, dcComplexRts	; %1010; Add volume
+	dccte	0, dcsVolTL_Normal, dcComplexRts	; %1011; Set volume
 
 	else
 dcComplexTL:

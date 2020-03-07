@@ -609,6 +609,8 @@ sCSMOff		macro ops
 ;    %0111: Enable modulation and reset volume envelope
 ;    %1000; Setup volume envelope and disable modulation
 ;    %1001; Setup volume envelope and enable modulation
+;    %1010; Add volume
+;    %1011; Set volume
 sComplexTL	macro val1, val2, val3, val4
 	dc.b $F4, \val1
 	local	mode, index, mask, flags
@@ -634,9 +636,18 @@ flags =				3	; envelope + modulation
 flags =				2	; envelope only
 =$90
 flags =				2	; envelope only
+=$A0
+flags =				4	; volume only
+=$B0
+flags =				4	; volume only
 =?
 flags =				0	; nothing
 			endcase
+
+			if flags&4	; check if we need to do volume modification
+				dc.b \val1
+				shift
+			endif
 
 			if flags&2	; check if we need to do volume envelope
 				dc.b \val1
@@ -678,21 +689,31 @@ ssModTL		macro op, wait, speed, step, count
     endm
 
 ; FF8yxx - Set TL volume envelope to xx for operator y (TL_MOD - FM_VOLENV)
-sVolEnvTL	macro val
-	dc.b $FF, $80|((op-1)*4), \val
+sVolEnvTL	macro op, val
+	dc.b $FF, $80|((\op-1)*4), \val
     endm
 
-; FF80 - Freeze 68k. Debug flag (DEBUG_STOP_CPU)
+; FF9yxx - Add xx to volume for operator y (TL_MOD - VOL_ADD_TL)
+saVolTL		macro op, val
+	dc.b $FF, $90|((\op-1)*4), \val
+    endm
+
+; FFAyxx - Set volume to xx for operator y (TL_MOD - VOL_SET_TL)
+ssVolTL		macro op, val
+	dc.b $FF, $A0|((\op-1)*4), \val
+    endm
+
+; FFB0 - Freeze 68k. Debug flag (DEBUG_STOP_CPU)
 sFreeze		macro
 	if safe=1
-		dc.b $FF,$80
+		dc.b $FF,$B0
 	endif
     endm
 
-; FF84 - Bring up tracker debugger at end of frame. Debug flag (DEBUG_PRINT_TRACKER)
+; FFB4 - Bring up tracker debugger at end of frame. Debug flag (DEBUG_PRINT_TRACKER)
 sCheck		macro
 	if safe=1
-		dc.b $FF,$84
+		dc.b $FF,$B4
 	endif
     endm
 ; ---------------------------------------------------------------------------------------------
