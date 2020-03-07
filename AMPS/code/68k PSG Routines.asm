@@ -450,9 +450,8 @@ dUpdateVolPSG:
 .send
 		cmp.w	#$7F,d1			; check if volume is out of range
 		bls.s	.nocap			; if not, branch
-		smi	d1			; if positive (above $7F), set to $00. Otherwise, set to $FF
-		tas	d1			; set bit7 always ($00 -> $80)
-		not.b	d1			; swap all bits. $80 -> $7F, $FF -> $00. This then gets sent to hardware.
+		spl	d1			; if positive (above $7F), set to $FF. Otherwise, set to $00
+		lsr.b	#1,d1			; shift value down by 1 bit ($FF -> $7F)
 
 .nocap
 		lsr.b	#3,d1			; divide volume by 8

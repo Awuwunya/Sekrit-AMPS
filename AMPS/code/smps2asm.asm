@@ -598,25 +598,29 @@ sCSMOff		macro ops
     endm
 
 ; F4xx -  Setup TL modulation for all operators according to parameter value (TL_MOD - MOD_COMPLEX)
-;  xx: lower 4 bits indicate what operators to apply to (reversed), and higher 4 bits are the operation:
-;    %0000: Setup modulation and reset volume envelope
-;    %0001: Setup modulation
-;    %0010: Setup volume envelope
-;    %0011: Setup modulation and volume envelope
-;    %0100: Disable modulation
-;    %0101: Enable modulation
-;    %0110: Disable modulation and reset volume envelope
-;    %0111: Enable modulation and reset volume envelope
-;    %1000; Setup volume envelope and disable modulation
-;    %1001; Setup volume envelope and enable modulation
-;    %1010; Add volume
-;    %1011; Set volume
+;  xx: lower 4 bits indicate what operators to apply to, and higher 4 bits are the operation:
+
+	rsset 0
+sctModsEnvr	rs.b $10	; %0000: Setup modulation and reset volume envelope
+sctMods		rs.b $10	; %0001: Setup modulation
+sctEnvs		rs.b $10	; %0010: Setup volume envelope
+sctModsEnvs	rs.b $10	; %0011: Setup modulation and volume envelope
+sctModd		rs.b $10	; %0100: Disable modulation
+sctMode		rs.b $10	; %0101: Enable modulation
+sctModdEnvr	rs.b $10	; %0110: Disable modulation and reset volume envelope
+sctModeEnvr	rs.b $10	; %0111: Enable modulation and reset volume envelope
+sctModdEnvs	rs.b $10	; %1000: Setup volume envelope and disable modulation
+sctModeEnvs	rs.b $10	; %1001: Setup volume envelope and enable modulation
+sctVola		rs.b $10	; %1010: Add volume
+sctVols		rs.b $10	; %1011: Set volume
+
 sComplexTL	macro val1, val2, val3, val4
-	dc.b $F4, \val1
 	local	mode, index, mask, flags
-mode =		\val1
-mask =		1
-		shift
+mode =	(\val1&$F0)|((\val1&1)<<3)|((\val1&2)<<1)|((\val1&4)>>1)|((\val1&8)>>3)
+mask =	1
+
+	shift
+	dc.b $F4, mode
 
 ; NAT: Here is some fun code to setup parameters
 	rept 4
