@@ -139,9 +139,9 @@ AMPS_Debug_Console_Channel:
 	Console.BreakLine
 
 	Console.WriteLine "%<pal1>Addr: %<pal0>%<.l a4 sym|split>%<pal2,symdisp>"
-; fmt: flag, type, pan, det, pitch, vol, tick, sample/voice, dur, lastdur, freq
+; fmt: flag, type, pan, det, pitch, vol, sample/voice, dur, lastdur, freq
 	Console.Write	  "%<pal1>CH: %<pal2>%<.b (a1)> %<.b cType(a1)> %<.b cPanning(a1)> "
-	Console.Write	  "%<.b cDetune(a1)> %<.b cPitch(a1)> %<.b cVolume(a1)> %<.b cTick(a1)> "
+	Console.Write	  "%<.b cDetune(a1)> %<.b cPitch(a1)> %<.b cVolume(a1)> "
 	Console.WriteLine "%<.b cSample(a1)> %<.b cDuration(a1)> %<.b cLastDur(a1)> %<.w cFreq(a1)>"
 	Console.BreakLine
 
@@ -213,7 +213,7 @@ AMPS_Debug_Console_Main:
 	Console.Write	  "%<pal1>Misc:   %<pal2>%<.b mFlags.w> %<.b mCtrPal.w> "
 	Console.WriteLine "%<.b mSpindash.w> %<.b mContCtr.w> %<.b mContLast.w>"
 	Console.Write	  "%<pal1>Tempo:  %<pal2>%<.b mTempoMain.w> %<.b mTempoSpeed.w> "
-	Console.WriteLine "%<.b mTempo.w> %<.b mTempoCur.w>"
+	Console.WriteLine "%<.b mTempo.w> %<.b mTempoAcc.w>"
 	Console.Write	  "%<pal1>Volume: %<pal2>%<.b mMasterVolFM.w> %<.b mMasterVolDAC.w> "
 	Console.WriteLine "%<.b mMasterVolPSG.w>"
 	Console.WriteLine "%<pal1>Fade:   %<pal0>%<.l mFadeAddr.w sym|split>%<pal2,symdisp>"

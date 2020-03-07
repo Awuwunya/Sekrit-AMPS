@@ -26,7 +26,7 @@ dCommands:
 	bra.w	dcaDetune	; E2 - Add xx to channel frequency displacement (DETUNE)
 	bra.w	dcsTransp	; E3 - Set channel pitch to xx (TRANSPOSE - TRNSP_SET)
 	bra.w	dcaTransp	; E4 - Add xx to channel pitch (TRANSPOSE - TRNSP_ADD)
-	bra.w	dcsTmul		; E5 - Set global tick multiplier to xx (TICK_MULT - TMULT_ALL)
+	bra.w	*		; E5 -
 	bra.w	dcFqFz		; E6 - Freeze frequency for the next note (FREQ_FREEZE)
 	bra.w	dcHold		; E7 - Do not allow note on/off for next note (HOLD)
 	bra.w	dcVoice		; E8 - Set Voice/sample/ADSR to xx (INSTRUMENT - INS_C_FM / INS_C_DAC / INS_C_ADSR)
@@ -88,7 +88,7 @@ dCommands:
 	bra.w	dcNoisePSG	; FF 3C - PSG4 mode to xx (PSG_NOISE - PNOIS_AMPS)
 	bra.w	dcCSMOn		; FF 40 - Enable CSM mode with settings (SPC_FM3 - CSM_ON)
 	bra.w	dcCSMOff	; FF 44 - Disable CSM mode (SPC_FM3 - CSM_OFF)
-	bra.w	dcsTmulCh	; FF 48 - Set channel tick multiplier to xx (TICK_MULT - TMULT_CUR)
+	bra.w	*		; FF 48 -
 	bra.w	*		; FF 4C - Enable CSM mode with settings (SPC_FM3 - CSM_ON)
 
 	if FEATURE_MODTL
@@ -131,7 +131,7 @@ dcskip	macro amount
 	dcskip	1		; E2 - Add xx to channel frequency displacement (DETUNE)
 	dcskip	1		; E3 - Set channel pitch to xx (TRANSPOSE - TRNSP_SET)
 	dcskip	1		; E4 - Add xx to channel pitch (TRANSPOSE - TRNSP_ADD)
-	dcskip	1		; E5 - Set global tick multiplier to xx (TICK_MULT - TMULT_ALL)
+	dcskip	1		; E5 -
 	bra.w	dcFqFz		; E6 - Freeze frequency for the next note (FREQ_FREEZE)
 	bra.w	dcHold		; E7 - Do not allow note on/off for next note (HOLD)
 	dcskip	1		; E8 - Set Voice/sample/ADSR to xx (INSTRUMENT - INS_C_FM / INS_C_DAC / INS_C_ADSR)
@@ -292,23 +292,6 @@ dcPitchDAC:
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Tracker commands for changing channel tick multiplier
-; ---------------------------------------------------------------------------
-
-dcsTmulCh:
-		move.b	(a2)+,cTick(a1)		; load tick multiplier from tracker to channel
-		rts
-
-dcsTmul:
-		move.b	(a2)+,d3		; load tick multiplier from tracker to d0
-.x =	mDAC1					; start at DAC1
-	rept Mus_Ch				; do for all music channels
-		move.b	d3,cTick+.x.w		; set channel tick multiplier
-.x =		.x+cSize			; go to next channel
-	endr
-		rts
-; ===========================================================================
-; ---------------------------------------------------------------------------
 ; Tracker command for enabling or disabling the hold flag
 ; ---------------------------------------------------------------------------
 
@@ -355,39 +338,43 @@ dcsTransp:
 ; ---------------------------------------------------------------------------
 
 dcsTempoShoes:
-		move.b	(a2)+,d3		; load tempo value from tracker
-		move.b	d3,mTempoSpeed.w	; save as the speed shoes tempo
+	dREAD_WORD	a2, d3			; load tempo value from tracker
+		move.w	d3,mTempoSpeed.w	; save as the speed shoes tempo
 		btst	#mfbSpeed,mFlags.w	; check if speed shoes mode is active
 		bne.s	dcsTempoCur		; if is, load as current tempo too
 		rts
 
 dcsTempo:
-		move.b	(a2)+,d3		; load tempo value from tracker
-		move.b	d3,mTempoMain.w		; save as the main tempo
+	dREAD_WORD	a2, d3			; load tempo value from tracker
+		move.w	d3,mTempoMain.w		; save as the main tempo
 		btst	#mfbSpeed,mFlags.w	; check if speed shoes mode is active
 		bne.s	locret_Tempo		; if not, load as current tempo too
 
 dcsTempoCur:
-		move.b	d3,mTempo.w		; save as current tempo
+		move.w	d3,mTempo.w		; save as current tempo
 
 locret_Tempo:
 		rts
 
 dcaTempoShoes:
 		move.b	(a2)+,d3		; load tempo value from tracker
-		add.b	d3,mTempoSpeed.w	; add to the speed shoes tempo
+		ext.w	d3			; extend to word
+		add.w	d3,mTempoSpeed.w	; add to the speed shoes tempo
+
 		btst	#mfbSpeed,mFlags.w	; check if speed shoes mode is active
 		bne.s	dcaTempoCur		; if is, add to current tempo too
 		rts
 
 dcaTempo:
 		move.b	(a2)+,d3		; load tempo value from tracker
-		add.b	d3,mTempoMain.w		; add to the main tempo
+		ext.w	d3			; extend to word
+		add.w	d3,mTempoMain.w		; add to the main tempo
+
 		btst	#mfbSpeed,mFlags.w	; check if speed shoes mode is active
 		bne.s	locret_Tempo		; if not, add to current tempo too
 
 dcaTempoCur:
-		add.b	d3,mTempo.w		; add to current tempo
+		add.w	d3,mTempo.w		; add to current tempo
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -681,7 +668,6 @@ copychFM3SM	macro ch, type
 	move.w	#((1<<cfbRun)|(1<<cfbVol))<<8|type,\ch+cFlags.w; enable channel tracker and set type
 	move.l	a4,\ch+cData.w			; save data address
 
-	move.b	mFM3op1+cTick.w,\ch+cTick.w	; copy tick multiplier
 	move.b	#cSize,\ch+cStack.w		; set stack address
 	move.b	#1,\ch+cDuration.w		; set duration to expire next frame
 
@@ -774,6 +760,7 @@ dcBackup:
 		jsr	dLoadFade(pc)		; initiate fade in
 
 		move.l	mBackTempoMain.w,mTempoMain.w; restore tempo settings
+		move.l	mBackTempo.w,mTempo.w	; restore tempo settings
 		move.l	mBackVctMus.w,mVctMus.w	; restore voice table address
 
 		lea	mBackUpLoc.w,a4		; load source address to a4
@@ -1022,6 +1009,7 @@ dUpdateVoiceFM:
 		move.b	(a4)+,d5		; get Total Level value from voice to d5
 		ext.w	d5			; extend to word
 		bpl.s	.noslot			; if slot operator bit was not set, branch
+
 		and.w	#$7F,d5			; get rid of sign bit (ugh)
 		add.w	d3,d5			; add carrier offset to loaded value
 	if FEATURE_UNDERWATER
@@ -1684,7 +1672,7 @@ dcsComm:
 
 dcCondRegTable:
 	dc.w ConsoleRegion, mFlags	; 0
-	dc.w mTempoMain, mTempoSpeed	; 2
+	dc.w 0, 0			; 2
 	dc.w 0, 0			; 4
 	dc.w 0, 0			; 6
 	dc.w 0, 0			; 8

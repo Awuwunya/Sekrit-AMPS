@@ -44,7 +44,7 @@ dAMPSnextPSGSFX:
 		bra.s	.pcnote			; do not calculate duration
 
 .timer
-		jsr	dCalcDuration(pc)	; calculate duration
+		move.b	d1,cLastDur(a1)		; save as the new duration
 
 .pcnote
 	dProcNote 1, 1				; reset necessary channel memory
@@ -88,7 +88,7 @@ dAMPSdoPSG4SFX:
 		bra.s	.pcnote			; do not calculate duration
 
 .timer
-		jsr	dCalcDuration(pc)	; calculate duration
+		move.b	d1,cLastDur(a1)		; save as the new duration
 
 .pcnote
 	dProcNote 1, 4				; reset necessary channel memory
@@ -145,7 +145,7 @@ dAMPSnextPSG:
 	if FEATURE_PSG4
 		jmp	dAMPSdoPSG4(pc)		; after that, process PSG4 channel
 	else
-		jmp	dAMPSdoDACSFX(pc)	; after that, process SFX DAC channels
+		jmp	dAMPSdoSFX(pc)		; after that, process SFX DAC channels
 	endif
 
 .update
@@ -161,7 +161,7 @@ dAMPSnextPSG:
 		bra.s	.pcnote			; do not calculate duration
 
 .timer
-		jsr	dCalcDuration(pc)	; calculate duration
+		move.b	d1,cLastDur(a1)		; save as the new duration
 
 .pcnote
 	dProcNote 0, 1				; reset necessary channel memory
@@ -174,7 +174,7 @@ dAMPSnextPSG:
 		jsr	dEnvelopePSG(pc)	; run envelope program
 		dbf	d0,dAMPSnextPSG		; make sure to run all the channels
 	if FEATURE_PSG4=0
-		jmp	dAMPSdoDACSFX(pc)	; after that, process SFX DAC channels'
+		jmp	dAMPSdoSFX(pc)		; after that, process SFX DAC channels'
 	else
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -188,15 +188,15 @@ dAMPSdoPSG4:
 		add.w	#cSize,a1		; go to the next channel
 
 		tst.b	(a1)			; check if channel is running a tracker
-		bpl.w	dAMPSdoDACSFX		; if not, branch
+		bpl.w	dAMPSdoSFX		; if not, branch
 		subq.b	#1,cDuration(a1)	; decrease note duration
 		beq.s	.update			; if timed out, update channel
 
-	dNoteToutPSG	dAMPSdoDACSFX		; handle PSG-specific note timeout behavior
+	dNoteToutPSG	dAMPSdoSFX		; handle PSG-specific note timeout behavior
 		jsr	dEnvelopePSG(pc)	; run envelope program
 
 .next
-		jmp	dAMPSdoDACSFX(pc)	; after that, process SFX DAC channels
+		jmp	dAMPSdoSFX(pc)		; after that, process SFX DAC channels
 
 .update
 		and.b	#$FF-(1<<cfbHold)-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest, hold and frequency freeze flags
@@ -213,12 +213,12 @@ dAMPSdoPSG4:
 		bra.s	.pcnote			; do not calculate duration
 
 .timer
-		jsr	dCalcDuration(pc)	; calculate duration
+		move.b	d1,cLastDur(a1)		; save as the new duration
 
 .pcnote
 	dProcNote 0, 4				; reset necessary channel memory
 		jsr	dEnvelopePSG(pc)	; run envelope program
-		jmp	dAMPSdoDACSFX(pc)	; after that, process SFX DAC channels
+		jmp	dAMPSdoSFX(pc)		; after that, process SFX DAC channels
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; note commands for PSG4

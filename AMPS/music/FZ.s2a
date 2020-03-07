@@ -1,6 +1,6 @@
 Final_Header:
 	sHeaderInit
-	sHeaderTempo	$02, $28
+	sHeaderTempo	$006C
 	sHeaderCh	$05, $00
 	sHeaderDAC	Final_DAC1
 	sHeaderDAC	Final_DAC2

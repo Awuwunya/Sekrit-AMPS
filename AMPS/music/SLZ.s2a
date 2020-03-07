@@ -1,6 +1,6 @@
 StarLight_Header:
 	sHeaderInit
-	sHeaderTempo	$02, $28
+	sHeaderTempo	$006C
 	sHeaderCh	$05, $03
 	sHeaderDAC	StarLight_DAC1
 	sHeaderDAC	StarLight_DAC2

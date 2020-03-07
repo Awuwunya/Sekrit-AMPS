@@ -1,6 +1,6 @@
 SpecialStage_Header:
 	sHeaderInit
-	sHeaderTempo	$02, $20
+	sHeaderTempo	$0070
 	sHeaderCh	$06, $02
 	sHeaderDAC	SpecialStage_DAC1
 	sHeaderDAC	SpecialStage_DAC2

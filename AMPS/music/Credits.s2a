@@ -1,6 +1,6 @@
 Credits_Header:
 	sHeaderInit
-	sHeaderTempo	$81, $05
+	sHeaderTempo	$80FB
 	sHeaderCh	$05, $03
 	sHeaderDAC	Credits_DAC1
 	sHeaderDAC	Credits_DAC2
@@ -659,7 +659,7 @@ Credits_FM1:
 	dc.b $0C, nG5, $18, nC5, $24, nRst, $60, nRst
 	dc.b nRst, nRst
 	sModOff
-	ssTempo		$11
+	ssTempo		$78
 	sVoice		$05
 	saVol		$02
 	dc.b nRst, $06, nE5, nG5, nE5, nG5, $09, nA5
@@ -678,14 +678,14 @@ Credits_FM1:
 	dc.b nRst, $0C, nG5, nA5, nG6
 	sCall		Credits_Call5
 	dc.b nE6, $1E, nE7, $06, nC7, $18, nRst, $24
-	ssTempo		$1A
+	ssTempo		$73
 	sVoice		$0F
 	saTranspose	$0C
 	saVol		$0B
 	sCall		Credits_Call6
-	ssTempo		$25
+	ssTempo		$6E
 	dc.b nRst, $60
-	ssTempo		$33
+	ssTempo		$66
 	dc.b nRst, $30
 	sVoice		$17
 	saVol		$0E
@@ -695,7 +695,7 @@ Credits_FM1:
 	dc.b $03, nRst, nBb5, nRst, nA5, $04, nBb5, nRst
 	dc.b $02, nC6, $0E, nRst, $06, nE6, $02, nRst
 	dc.b $04, nE6, $0C, nF6, nE6, $0A, nD6, $02
-	ssTempo		$40
+	ssTempo		$60
 	saVol		$F5
 	sVoice		$1A
 	dc.b nRst, $60
@@ -1160,9 +1160,9 @@ Credits_Call17:
 	saVol		$08
 	sVoice		$16
 	dc.b nRst, $30, nRst, $30
-	ssTickMulCh	$01
+;	ssTickMulCh	$01
 	sCall		Credits_Call18
-	ssTickMulCh	$02
+;	ssTickMulCh	$02
 	sVoice		$12
 	sModAMPS	$01, $01, $01, $04
 	dc.b nD6, $02, nRst, $04, nD6, $08, nD6, $03
@@ -1335,9 +1335,9 @@ Credits_Loop21:
 	sVolEnv		v06
 	saVol		$20
 	dc.b nRst, $30, nRst, $30
-	ssTickMulCh	$01
+;	ssTickMulCh	$01
 	sCall		Credits_Call18x
-	ssTickMulCh	$02
+;	ssTickMulCh	$02
 	dc.b nD6, $02, nRst, $04, nD6, $08, nD6, $03
 	dc.b nRst, nD6, nRst, nC6, nRst, nA6, nRst, nF6
 	dc.b nRst, $07, nBb5, $02, nRst, $04, nBb5, $08
@@ -1559,7 +1559,7 @@ Credits_Loop41:
 	sLoop		$00, $03, Credits_Loop41
 	dc.b dKick, $18, dSnare, $0C, dKick, $18, dSnare, $0C
 	dc.b dSnare, dSnare
-	ssTickMul	$02
+;	ssTickMul	$02
 
 Credits_Loop42:
 	dc.b dKick, $12, dKick, $06, dKick, $0C, dSnare
@@ -1595,7 +1595,7 @@ Credits_Loop45:
 	dc.b nRst, $04, dKick, $08, dSnare, $06, dKick, dKick
 	dc.b $0C, dSnare, $0A, dKick, $02
 	sLoop		$00, $03, Credits_Loop45
-	ssTickMul	$01
+;	ssTickMul	$01
 	dc.b nRst, $18, dSnare, $14, dKick, $04, dSnare, $0C
 	dc.b dSnare, dSnare, $0C, $08, dKick, $04
 

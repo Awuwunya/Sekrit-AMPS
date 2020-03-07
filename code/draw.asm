@@ -80,7 +80,7 @@ DrawScene:
 		rts
 
 .list	dc.w MusSel, MusPlay
-	dc.w mTempo, mTempoMain, mTempoSpeed, mTempoCur
+	dc.w 0, mTempo, 0, mTempoMain, 0, mTempoSpeed, mTempoAcc+1
 	dc.w mMasterVolFM, mMasterVolPSG, mMasterVolDAC
 
 .ch =	mDAC1

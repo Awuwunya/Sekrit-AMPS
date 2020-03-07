@@ -73,9 +73,17 @@ sHeaderCh	macro fmc,psgc
 	endif
     endm
 
-; Header - Set up Tempo and Tick Multiplier
-sHeaderTempo	macro tmul,tempo
-	dc.b \tempo,\tmul-1
+; Header - Set up Tempo
+sHeaderTempo	macro tempo
+	dc.w \tempo
+
+	if narg<>1
+		inform 2,"Wrong number of arguments for sHeaderTempo!"
+	endif
+
+	if (\tempo&$3FFF)>$300
+		inform 1,"It is dangerious to use tempos >$300!"
+	endif
     endm
 
 ; Header - Set priority leve
@@ -341,16 +349,6 @@ saTranspose	macro transp
 	dc.b $E4, \transp
     endm
 
-; E6xx - Set global tick multiplier to xx (TICK_MULT - TMULT_ALL)
-ssTickMul	macro tick
-	dc.b $E5, \tick-1
-    endm
-
-; FF48xx - Set channel tick multiplier to xx (TICK_MULT - TMULT_CUR)
-ssTickMulCh	macro tick
-	dc.b $FF, $48, \tick-1
-    endm
-
 ; E6 - Freeze frequency for the next note (FREQ_FREEZE)
 sFqFz =		$E6
 
@@ -372,14 +370,16 @@ sModEnv		macro env
 	dc.b $F3, \env
     endm
 
-; E9xx - Set music speed shoes tempo to xx (TEMPO - TEMPO_SET_SPEED)
+; E9xxxx - Set music speed shoes tempo to xx (TEMPO - TEMPO_SET_SPEED)
 ssTempoShoes	macro tempo
-	dc.b $E9, \tempo
+	dc.b $E9
+	dc.w \tempo
     endm
 
-; EAxx - Set music tempo to xx (TEMPO - TEMPO_SET)
+; EAxxxx - Set music tempo to xx (TEMPO - TEMPO_SET)
 ssTempo		macro tempo
-	dc.b $EA, \tempo
+	dc.b $EA
+	dc.w \tempo
     endm
 
 ; FF18xx - Add xx to music speed tempo (TEMPO - TEMPO_ADD_SPEED)

@@ -32,12 +32,6 @@ FEATURE_FM3SM =		1	; set to 1 to enable FM3 Special Mode support
 FEATURE_MODTL =		1	; set to 1 to enable TL modulation feature
 FEATURE_STACK_DEPTH =	3	; set the number of slots in music channel stack. At least 3 is recommended
 
-; Select the tempo algorith.
-; 0 = Overflow method.
-; 1 = Counter method.
-
-TEMPO_ALGORITHM =	0
-
 ; if safe mode is enabled (1), then the driver will attempt to find any issues.
 ; if Vladik's error debugger is installed, then the error will be displayed.
 ; else, the CPU is trapped.
@@ -57,7 +51,7 @@ cPanning	rs.b 1		; channel panning and LFO. FM and DAC only. Not used in FM3 op2
 cDetune		rs.b 1		; frequency detune (offset)
 cPitch		rs.b 1		; pitch (transposition) offset
 cVolume		rs.b 1		; channel volume
-cTick		rs.b 1		; channel tick multiplier
+cStack		rs.b 1		; channel stack pointer. Music only
 	if FEATURE_PSGADSR
 cADSR		rs.b 0		; channel ADSR ID, PSG only
 	endif
@@ -96,8 +90,6 @@ cPrio =		__rs-1		; sound effect channel priority. SFX only
 
 cGateCur	rs.b 1		; frame counter to note off. Music only
 cGateMain	rs.b 1		; copy of frame counter to note off. Music only
-cStack		rs.b 1		; channel stack pointer. Music only
-		rs.b 1		; unused. Music only
 		rs.l FEATURE_STACK_DEPTH; channel stack data. Music only
 cSize		rs.w 0		; size of each music track
 ; ===========================================================================
@@ -298,10 +290,10 @@ mCtrPal		rs.b 1		; frame counter fo 50hz fix
 mComm		rs.b 8		; communications bytes
 mMasterVolFM	rs.b 0		; master volume for FM channels
 mFadeAddr	rs.l 1		; fading program address
-mTempoMain	rs.b 1		; music normal tempo
-mTempoSpeed	rs.b 1		; music speed shoes tempo
-mTempo		rs.b 1		; current tempo we are using right now
-mTempoCur	rs.b 1		; tempo counter/accumulator
+mTempoMain	rs.w 1		; music normal tempo
+mTempoSpeed	rs.w 1		; music speed shoes tempo
+mTempo		rs.w 1		; current tempo we are using right now
+mTempoAcc	rs.w 1		; tempo counter/accumulator
 mQueue		rs.b 3		; sound queue
 mMasterVolPSG	rs.b 1		; master volume for PSG channels
 mVctMus		rs.l 1		; address of voice table for music
@@ -403,10 +395,10 @@ mBackPSG3	rs.b cSize	; back-up PSG 3 data
 mBackPSG4	rs.b cSize	; back-up PSG 4 data
 	endif
 
-mBackTempoMain	rs.b 1		; back-up music normal tempo
-mBackTempoSpeed	rs.b 1		; back-up music speed shoes tempo
-mBackTempo	rs.b 1		; back-up current tempo we are using right now
-mBackTempoCur	rs.b 1		; back-up tempo counter/accumulator
+mBackTempoMain	rs.w 1		; back-up music normal tempo
+mBackTempoSpeed	rs.w 1		; back-up music speed shoes tempo
+mBackTempo	rs.w 1		; back-up current tempo we are using right now
+mBackTempoAcc	rs.w 1		; back-up tempo counter/accumulator
 mBackVctMus	rs.l 1		; back-up address of voice table for music
 	endif
 

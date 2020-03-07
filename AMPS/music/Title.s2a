@@ -1,6 +1,6 @@
 TitleScreen_Header:
 	sHeaderInit
-	sHeaderTempo	$81, $33		; that $8X means that the 50hz "fix" is not applied to this song.
+	sHeaderTempo	$80CD
 	sHeaderCh	$05, $03
 	sHeaderDAC	TitleScreen_DAC1
 	sHeaderDAC	TitleScreen_DAC2

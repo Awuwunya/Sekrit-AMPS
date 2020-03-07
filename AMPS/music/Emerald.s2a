@@ -1,6 +1,6 @@
 Emerald_Header:
 	sHeaderInit
-	sHeaderTempo	$01, $28
+	sHeaderTempo	$00D8
 	sHeaderCh	$06, $02
 	sHeaderDAC	Emerald_DAC1
 	sHeaderDAC	Emerald_DAC2

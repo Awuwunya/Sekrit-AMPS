@@ -44,7 +44,7 @@ dAMPSnextDAC:
 		bra.s	.pcnote			; do not calculate duration
 
 .timer
-		jsr	dCalcDuration(pc)	; calculate duration
+		move.b	d1,cLastDur(a1)		; save as the new duration
 
 .pcnote
 	dProcNote 0, -1				; reset necessary channel memory
@@ -238,6 +238,8 @@ dFreqDAC1:
 ; ---------------------------------------------------------------------------
 
 dAMPSdoSFX:
+		subq.b	#1,mTempoAcc.w		; decrement high byte of accumulator
+		bne.w	dAMPSdoDAC		; if not 0, run music once again
 		lea	mSFXDAC1-cSize.w,a1	; get SFX DAC1 channel RAM address into a1
 
 dAMPSdoDACSFX:
@@ -276,7 +278,7 @@ dAMPSdoDACSFX:
 		bra.s	.pcnote			; do not calculate duration
 
 .timer
-		jsr	dCalcDuration(pc)	; calculate duration
+		move.b	d1,cLastDur(a1)		; save as the new duration
 
 .pcnote
 	dProcNote 1, -1				; reset necessary channel memory

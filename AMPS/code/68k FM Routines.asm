@@ -343,7 +343,7 @@ dAMPSnextFMSFX:
 		bra.s	.pcnote			; do some extra clearing
 
 .timer
-		jsr	dCalcDuration(pc)	; calculate duration
+		move.b	d1,cLastDur(a1)		; save as the new duration
 
 .pcnote
 	dProcNote 1, 0				; reset necessary channel memory
@@ -420,7 +420,7 @@ dAMPSnextFM:
 		bra.s	.pcnote			; do some extra clearing
 
 .timer
-		jsr	dCalcDuration(pc)	; calculate duration
+		move.b	d1,cLastDur(a1)		; save as the new duration
 
 .pcnote
 	dProcNote 0, 0				; reset necessary channel memory

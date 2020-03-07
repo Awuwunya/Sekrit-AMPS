@@ -1,6 +1,6 @@
 GameOver_Header:
 	sHeaderInit
-	sHeaderTempo	$02, $0D
+	sHeaderTempo	$007A
 	sHeaderCh	$05, $00
 	sHeaderDAC	GameOver_DAC1
 	sHeaderDAC	GameOver_DAC2
