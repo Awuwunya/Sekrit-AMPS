@@ -293,6 +293,7 @@ dPlaySnd_Music:
 		jsr	dStopMusic(pc)		; mute hardware and reset all driver memory
 		jsr	dResetVolume(pc)	; reset volumes and end any fades
 
+		and.b	#~(1<<mfbNoPAL),mFlags.w; enable PAL fix
 		move.w	(a2)+,d3		; load song tempo to d3
 		bpl.s	.noPAL			; branch if the loaded value was positive
 		or.b	#1<<mfbNoPAL,mFlags.w	; disable PAL fix
@@ -311,7 +312,6 @@ dPlaySnd_Music:
 .tempogot
 		move.w	d3,mTempo.w		; save as the current tempo
 		move.w	d3,mTempoAcc.w		; copy into the accumulator/counter
-		and.b	#~(1<<mfbNoPAL),mFlags.w; enable PAL fix
 ; ---------------------------------------------------------------------------
 ; If the 7th bit (msb) of tick multiplier is set, PAL fix gets
 ; disabled. I know, very weird place to put it, but we dont have

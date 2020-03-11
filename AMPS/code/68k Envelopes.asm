@@ -428,11 +428,11 @@ dProcessADSR:
 		move.b	-1(a4),(a3)		; copy real volume here
 
 .nextphase
+		bset	#cfbVol,(a1)		; force volume update
 		moveq	#adpMask|admMask,d3	; prepare mode and phase mask to d3
 		and.b	adFlags(a3),d3		; and with flags on d3
 		move.b	dPhaseTableADSR(pc,d3.w),adFlags(a3); load flags from table
 
-		bset	#cfbVol,(a1)		; force volume update
 		move.b	(a3),d4			; load volume to d4
 		ext.w	d4			; extend to word
 		add.w	d4,d1			; add to volume in d1

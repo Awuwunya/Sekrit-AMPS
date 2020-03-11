@@ -688,7 +688,7 @@ sModOffTL	macro op
 ;  zz: number of steps
 ; (TL_MOD - MOD_SETUP)
 ssModTL		macro op, wait, speed, step, count
-	dc.b $FF, $70|((op-1)*4)
+	dc.b $FF, $70|((\op-1)*4)
 	sModData	\wait,\speed,\step,\count
     endm
 

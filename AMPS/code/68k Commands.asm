@@ -89,7 +89,7 @@ dCommands:
 	bra.w	dcCSMOn		; FF 40 - Enable CSM mode with settings (SPC_FM3 - CSM_ON)
 	bra.w	dcCSMOff	; FF 44 - Disable CSM mode (SPC_FM3 - CSM_OFF)
 	bra.w	*		; FF 48 -
-	bra.w	*		; FF 4C - Enable CSM mode with settings (SPC_FM3 - CSM_ON)
+	bra.w	*		; FF 4C -
 
 	if FEATURE_MODTL
 tlmod	macro name
@@ -1136,17 +1136,16 @@ dUpdateVoiceFM3:
 	endif
 
 		move.b	cVolume(a1),d3		; load FM channel volume to d3
+		ext.w	d3			; extend to word
 
 ;	if FEATURE_SFX_MASTERVOL=0
 ;		cmpa.w	#mSFXDAC1,a1		; is this a SFX channel
 ;		bhs.s	.noover			; if so, do not add master volume!
 ;	endif
 
-		add.b	mMasterVolFM.w,d3	; add master FM volume to d3
-	if FEATURE_MODTL=0
-		bpl.s	.noover			; if volume did not overflow, skip
-		moveq	#$7F,d3			; force FM volume to silence
-	endif
+		move.b	mMasterVolFM.w,d6	; load master FM volume to d6
+		ext.w	d6			; extend to word
+		add.w	d6,d3			; add to volume
 
 .noover
 	if FEATURE_UNDERWATER
@@ -1160,12 +1159,7 @@ dUpdateVoiceFM3:
 		move.b	(a6,d4.w),d4		; get the value from table
 		move.b	d4,d6			; copy to d6
 		and.w	#7,d4			; mask out extra stuff
-
-		add.b	d4,d3			; add algorithm to Total Level carrier offset
-	if FEATURE_MODTL=0
-		bpl.s	.uwdone			; if volume did not overflow, skip
-		moveq	#$7F,d3			; force FM volume to silence
-	endif
+		add.w	d4,d3			; add algorithm to Total Level carrier offset
 
 .uwdone
 	endif
@@ -1174,22 +1168,15 @@ dUpdateVoiceFM3:
 		ext.w	d5			; extend to word
 		bpl.s	.noslot			; if slot operator bit was not set, branch
 
-	if FEATURE_MODTL
 		and.w	#$7F,d5			; get rid of sign bit (ugh)
-		add.b	d3,d5			; add carrier offset to loaded value
-	else
-		add.b	d3,d5			; add carrier offset to loaded value
-		bmi.s	.slot			; if we did not overflow, branch
-		moveq	#-1,d5			; cap to silent volume
-	endif
-
+		add.w	d3,d5			; add carrier offset to loaded value
 	if FEATURE_UNDERWATER
 		bra.s	.slot
 	endif
 
 .noslot
 	if FEATURE_UNDERWATER
-		add.b	d6,d5			; add modulator offset to loaded value
+		add.w	d6,d5			; add modulator offset to loaded value
 	endif
 
 .slot
@@ -1529,14 +1516,6 @@ tlmodrt		macro update, name
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Tracker command for setting volume envelope ID
-; ---------------------------------------------------------------------------
-
-	tlmodrt	1, dcVolEnvTL			; generate call structure to this routine
-		move.b	(a2)+,toVolEnv(a3)	; set volume envelope ID
-		rts
-; ===========================================================================
-; ---------------------------------------------------------------------------
 ; Tracker command for adding volume
 ; ---------------------------------------------------------------------------
 
@@ -1551,6 +1530,14 @@ tlmodrt		macro update, name
 
 	tlmodrt	1, dcsVolTL			; generate call structure to this routine
 		move.b	(a2)+,toVol(a3)		; set volume to xx
+		rts
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Tracker command for setting volume envelope ID
+; ---------------------------------------------------------------------------
+
+	tlmodrt	1, dcVolEnvTL			; generate call structure to this routine
+		move.b	(a2)+,toVolEnv(a3)	; set volume envelope ID
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
