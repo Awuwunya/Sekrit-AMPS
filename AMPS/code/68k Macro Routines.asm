@@ -343,7 +343,7 @@ dProcNote	macro	sfx, chan
 	endif
 
 	if ((\chan=1)|(\chan=4))&FEATURE_PSGADSR
-		btst	#cfbHold,(a1)		; check if note is held
+		btst	#mfbHold,mExtraFlags.w	; check if note is held
 		bne.w	.endpn			; if yes, skip dis
 		btst	#cfbRest,(a1)		; check if resting
 		bne.s	.noadsrf		; if yes, skip dis
@@ -369,7 +369,7 @@ dProcNote	macro	sfx, chan
 	endif
 
 	if FEATURE_MODULATION|(\sfx=0)|(\chan=1)|(\chan=4)
-		btst	#cfbHold,(a1)		; check if we are holding
+		btst	#mfbHold,mExtraFlags.w	; check if we are holding
 		if (\chan=0)&(FEATURE_MODTL<>0)
 			bne.w	.endpn		; if we are, branch
 		else
@@ -480,7 +480,7 @@ dKeyOnFM	macro	sfx
 .nosm
 	endif
 
-		btst	#cfbHold,(a1)		; check if note is held
+		btst	#mfbHold,mExtraFlags.w	; check if note is held
 		bne.s	.k			; if so, do not note on
 		btst	#cfbRest,(a1)		; check if channel is resting
 		bne.s	.k			; if so, do not note on

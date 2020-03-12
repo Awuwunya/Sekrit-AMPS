@@ -296,7 +296,7 @@ dcPitchDAC:
 ; ---------------------------------------------------------------------------
 
 dcHold:
-		bchg	#cfbHold,(a1)		; flip the channel hold flag
+		bchg	#mfbHold,mExtraFlags.w	; flip the channel hold flag
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -990,7 +990,7 @@ dUpdateVoiceFM:
 	if FEATURE_UNDERWATER
 		clr.w	d6			; no underwater 4 u
 
-		btst	#mfbWater,mFlags.w	; check if underwater mode is enabled
+		btst	#mfbWater,mExtraFlags.w	; check if underwater mode is enabled
 		beq.s	.uwdone			; if not, skip
 		lea	dUnderwaterTbl(pc),a6	; get underwater table to a6
 
@@ -1151,7 +1151,7 @@ dUpdateVoiceFM3:
 	if FEATURE_UNDERWATER
 		clr.w	d6			; no underwater 4 u
 
-		btst	#mfbWater,mFlags.w	; check if underwater mode is enabled
+		btst	#mfbWater,mExtraFlags.w	; check if underwater mode is enabled
 		beq.s	.uwdone			; if not, skip
 		lea	dUnderwaterTbl(pc),a6	; get underwater table to a6
 
@@ -1235,7 +1235,7 @@ dUpdateVoiceFM3:
 ; ---------------------------------------------------------------------------
 
 dcStop:
-		and.b	#~((1<<cfbHold)-(1<<cfbRun)),(a1); clear hold and running tracker flags
+		and.b	#$FF-(1<<cfbRun),(a1)	; clear hold and running tracker flags
 	dStopChannel	-1			; stop channel operation (special mode)
 
 	if FEATURE_FM3SM

@@ -45,12 +45,13 @@ safe =	1
 	rsset 0
 cFlags		rs.b 1		; various channel flags, see below
 cType		rs.b 1		; hardware type for the channel
+cPitch		rs.b 1		; pitch (transposition) offset
+cVolume		rs.b 1		; channel volume
 cData		rs.l 1		; 68k tracker address for the channel
 cStatPSG4	rs.b 0		; PSG4 type value. PSG3 and PSG4 only
 cPanning	rs.b 1		; channel panning and LFO. FM and DAC only. Not used in FM3 op2-op4.
 cDetune		rs.b 1		; frequency detune (offset)
-cPitch		rs.b 1		; pitch (transposition) offset
-cVolume		rs.b 1		; channel volume
+cExtraFlags	rs.b 0		; various extra channel flags. SFX only.
 cStack		rs.b 1		; channel stack pointer. Music only
 	if FEATURE_PSGADSR
 cADSR		rs.b 0		; channel ADSR ID, PSG only
@@ -101,7 +102,6 @@ cSize		rs.w 0		; size of each music track
 cfbMode		rs.b 0		; set if in pitch mode, clear if in sample mode. DAC only
 cfbRest		rs.b 1		; set if channel is resting. FM and PSG only
 cfbInt		rs.b 1		; set if interrupted by SFX. Music only
-cfbHold		rs.b 1		; set if playing notes does not trigger note-on's
 cfbFreqFrz	rs.b 1		; set if note frequency should be "frozen". Various things do not affect frequency
 cfbCond		rs.b 1		; set if ignoring most tracker commands
 cfbVol		rs.b 1		; set if channel should update volume
@@ -287,6 +287,8 @@ dPSG =		$C00011		; quick reference to PSG port
 	rsset Drvmem		; Insert your RAM definition here!
 mFlags		rs.b 1		; various driver flags, see below
 mCtrPal		rs.b 1		; frame counter fo 50hz fix
+mExtraFlags	rs.b 1		; various extra flags for the current executing channel.
+mMusicFlags	rs.b 1		; extra flags specific to music channels. Music channels share flags.
 mComm		rs.b 8		; communications bytes
 mMasterVolFM	rs.b 0		; master volume for FM channels
 mFadeAddr	rs.l 1		; fading program address
@@ -412,13 +414,23 @@ mSize		rs.w 0		; end of the driver RAM
 ; ---------------------------------------------------------------------------
 
 	rsset 0
+mfbWater	rs.b 1		; if set, underwater mode is active
 mfbSwap		rs.b 1		; if set, swap the sfx
 mfbSpeed	rs.b 1		; if set, speed shoes are active
-mfbWater	rs.b 1		; if set, underwater mode is active
 mfbNoPAL	rs.b 1		; if set, play songs slowly in PAL region
 mfbBacked	rs.b 1		; if set, a song has been backed up already
 mfbExec		rs.b 1		; if set, AMPS is currently running
 mfbPaused =	$07		; if set, sound driver is paused
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Bits for mExtraFlags
+; ---------------------------------------------------------------------------
+
+	rsset 0
+		rs.b 1		; if set, underwater mode is currently enabled.
+mfbHold		rs.b 1		; set if playing notes does not trigger note-on's
+		rs.b 3		; unused
+mfbBlockUW	rs.b 1		; if set, underwater mode can not be enabled for this channel.
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Sound ID equates

@@ -85,13 +85,12 @@ __sfx =		SFXoff
 SoundIndex:
 	ptrSFX	$01, RingRight
 	ptrSFX	0, RingLeft, RingLoss, Splash, Break, Jump, Roll
-	ptrSFX	0, Skid, Bubble, Drown, SpikeHit, Death, AirDing
-	ptrSFX	0, Register, Bonus, Shield, Dash, BossHit, Switch
-	ptrSFX	0, Signpost, Lamppost, BigRing, Bumper, Spring
-	ptrSFX	0, Collapse, Smash, Basaran, BuzzExplode, Explode
-	ptrSFX	0, Electricity, Flame, LavaBall, SpikeMove, Rumble
-	ptrSFX	0, Door, Stomp, Chain, Saw, Lava
-
+	ptrSFX	0, Skid, SpikeHit, Death, Register, Bonus, Shield
+	ptrSFX	0, BossHit, Switch, Lamppost, BigRing, Bumper
+	ptrSFX	0, Spring, Collapse, Smash, Basaran, BuzzExplode
+	ptrSFX	0, Explode, Electricity, Flame, LavaBall, SpikeMove
+	ptrSFX	0, Rumble, Door, Chain, Saw, Lava
+	ptrSFX	$20, Bubble, Drown, AirDing, Dash, Signpost, Stomp
 	ptrSFX	0, EnterSS, Goal, ActionBlock, Diamonds, Continue
 
 ; SFX with special features

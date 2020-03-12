@@ -14,6 +14,7 @@ dAMPSnextPSGSFX:
 		addq.w	#adSize,a3		; add ADSR size to a3
 	endif
 		add.w	#cSizeSFX,a1		; go to the next channel
+		move.b	cExtraFlags(a1),mExtraFlags.w; copy flags to extra flags
 
 		tst.b	(a1)			; check if channel is running a tracker
 		bpl.w	.next			; if not, branch
@@ -32,7 +33,7 @@ dAMPSnextPSGSFX:
 		jmp	dAMPSdoPSG4SFX(pc)	; after that, check tracker and end loop
 
 .update
-		and.b	#$FF-(1<<cfbHold)-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest, hold and frequency freeze flags
+		and.b	#$FF-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest and frequency freeze flags
 	dDoTracker				; process tracker
 		tst.b	d1			; check if note is being played
 		bpl.s	.timer			; if not, it must be a timer. Branch
@@ -74,7 +75,7 @@ dAMPSdoPSG4SFX:
 		jmp	dCheckTracker(pc)	; after that, process SFX DAC channels
 
 .update
-		and.b	#$FF-(1<<cfbHold)-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest, hold and frequency freeze flags
+		and.b	#$FF-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest and frequency freeze flags
 	dDoTracker	4			; process tracker
 		tst.b	d1			; check if note is being played
 		bpl.s	.timer			; if not, it must be a timer. branch
@@ -126,6 +127,7 @@ dAMPSnextPSG:
 		addq.w	#adSize,a3		; add ADSR size to a3
 	endif
 		add.w	#cSize,a1		; go to the next channel
+		move.b	mMusicFlags.w,mExtraFlags.w; copy music flags to extra flags
 
 		tst.b	(a1)			; check if channel is running a tracker
 		bpl.w	.next			; if not, branch
@@ -149,7 +151,7 @@ dAMPSnextPSG:
 	endif
 
 .update
-		and.b	#$FF-(1<<cfbHold)-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest, hold and frequency freeze flags
+		and.b	#$FF-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest and frequency freeze flags
 	dDoTracker				; process tracker
 		tst.b	d1			; check if note is being played
 		bpl.s	.timer			; if not, it must be a timer. branch
@@ -186,6 +188,7 @@ dAMPSdoPSG4:
 		addq.w	#adSize,a3		; add ADSR size to a3
 	endif
 		add.w	#cSize,a1		; go to the next channel
+		move.b	mMusicFlags.w,mExtraFlags.w; copy music flags to extra flags
 
 		tst.b	(a1)			; check if channel is running a tracker
 		bpl.w	dAMPSdoSFX		; if not, branch
@@ -199,7 +202,7 @@ dAMPSdoPSG4:
 		jmp	dAMPSdoSFX(pc)		; after that, process SFX DAC channels
 
 .update
-		and.b	#$FF-(1<<cfbHold)-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest, hold and frequency freeze flags
+		and.b	#$FF-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest and frequency freeze flags
 	dDoTracker	4			; process tracker
 		tst.b	d1			; check if note is being played
 		bpl.s	.timer			; if not, it must be a timer. branch
@@ -436,7 +439,7 @@ dUpdateVolPSG:
 	if FEATURE_PSGADSR=0
 		btst	#cfbRest,(a1)		; is this channel resting
 		bne.s	locret_UpdVolPSG	; if is, do not update
-		btst	#cfbHold,(a1)		; check if note is held
+		btst	#mfbHold,mExtraFlags.w	; check if note is held
 		beq.s	.send			; if not, update volume
 
 		cmp.w	#mSFXDAC1,a1		; check if this is a SFX channel

@@ -81,7 +81,7 @@ sHeaderTempo	macro tempo
 		inform 2,"Wrong number of arguments for sHeaderTempo!"
 	endif
 
-	if (\tempo&$3FFF)>$300
+	if (\tempo&$0FFF)>$300
 		inform 1,"It is dangerious to use tempos >$300!"
 	endif
     endm
@@ -122,8 +122,8 @@ sHeaderPSG	macro loc,pitch,vol,detune,volenv
 ; Header - Set up SFX Channel
 sHeaderSFX	macro flags,type,loc,pitch,vol
 	dc.b \flags,\type
-	dc.w \loc-*
 	dc.b (\pitch)&$FF,(\vol)&$FF
+	dc.w \loc-*
     endm
 ; ---------------------------------------------------------------------------------------------
 ; Macros for PSG instruments

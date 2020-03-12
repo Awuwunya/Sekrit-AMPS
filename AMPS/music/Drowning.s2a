@@ -1,6 +1,6 @@
 Drowning_Header:
 	sHeaderInit
-	sHeaderTempo	$8080
+	sHeaderTempo	$A080
 	sHeaderCh	$05, $00
 	sHeaderDAC	Drowning_DAC1
 	sHeaderDAC	Drowning_DAC2

@@ -127,7 +127,7 @@ dUpdateVolFM2:
 	if FEATURE_UNDERWATER
 		clr.w	d6			; clear d6 (so no underwater by default)
 
-		btst	#mfbWater,mFlags.w	; check if underwater mode is enabled
+		btst	#mfbWater,mExtraFlags.w	; check if underwater mode is enabled
 		beq.s	.uwdone			; if not, skip
 		move.b	(a4),d4			; load algorithm and feedback to d4
 		and.w	#7,d4			; mask out everything but the algorithm
@@ -309,6 +309,7 @@ dAMPSnextFMSFX:
 		add.w	#toSize4,a3		; go to the TL data
 	endif
 		add.w	#cSizeSFX,a1		; go to the next channel
+		move.b	cExtraFlags(a1),mExtraFlags.w; copy flags to extra flags
 
 		tst.b	(a1)			; check if channel is running a tracker
 		bpl.w	.next			; if not, branch
@@ -330,7 +331,7 @@ dAMPSnextFMSFX:
 		jmp	dAMPSdoPSGSFX(pc)	; after that, process SFX PSG channels
 
 .update
-		and.b	#$FF-(1<<cfbHold)-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest, hold and frequency freeze flags
+		and.b	#$FF-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest and frequency freeze flags
 	dDoTracker				; process tracker
 		jsr	dKeyOffFM2(pc)		; send key-off command to YM
 		tst.b	d1			; check if note is being played
@@ -372,6 +373,8 @@ dAMPSdoFM:
 
 dAMPSnextFM:
 		add.w	#cSize,a1		; go to the next channel
+		move.b	mMusicFlags.w,mExtraFlags.w; copy music flags to extra flags
+
 	if FEATURE_MODTL
 		if FEATURE_FM3SM		; TODO: Terrible code ahead! =(
 			cmp.w	#mFM3op3,a1	; check if this is FM3 op3 or greater
@@ -407,7 +410,7 @@ dAMPSnextFM:
 		jmp	dAMPSdoPSG(pc)		; after that, process music PSG channels
 
 .update
-		and.b	#$FF-(1<<cfbHold)-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest, hold and frequency freeze flags
+		and.b	#$FF-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest and frequency freeze flags
 	dDoTracker				; process tracker
 		jsr	dKeyOffFM(pc)		; send key-off command to YM
 		tst.b	d1			; check if note is being played
@@ -581,7 +584,7 @@ dKeyOffSM:
 
 dKeyOffFM3:
 	endif
-		btst	#cfbHold,(a1)		; check if note is held
+		btst	#mfbHold,mExtraFlags.w	; check if note is held
 		bne.s	.rts			; if so, do not note off
 		move.b	cType(a1),d3		; load channel type value to d3
 		moveq	#$28,d4			; load key on/off to d4

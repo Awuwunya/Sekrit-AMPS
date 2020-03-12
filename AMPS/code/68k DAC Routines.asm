@@ -9,7 +9,9 @@ dAMPSdoDAC:
 		moveq	#Mus_DAC-1,d0		; get total number of DAC channels to d0
 
 dAMPSnextDAC:
+		move.b	mMusicFlags.w,mExtraFlags.w; copy music flags to extra flags
 		add.w	#cSize,a1		; go to the next channel (first time its mDAC1!)
+
 		tst.b	(a1)			; check if channel is running a tracker
 		bpl.w	.next			; if not, branch
 		subq.b	#1,cDuration(a1)	; decrease note duration
@@ -31,7 +33,7 @@ dAMPSnextDAC:
 		jmp	dAMPSdoFM(pc)		; after that, process music FM channels
 
 .update
-		and.b	#$FF-(1<<cfbHold)-(1<<cfbFreqFrz),(a1); clear hold and frequency freeze flags
+		and.b	#$FF-(1<<cfbFreqFrz),(a1); clear frequency freeze flags
 	dDoTracker				; process tracker
 		moveq	#0,d4			; clear rest flag
 		tst.b	d1			; check if note is being played
@@ -115,7 +117,7 @@ dNoteOnDAC:
 		moveq	#0,d3			; make sure the upper byte is clear
 		move.b	cSample(a1),d3		; get sample ID to d3
 		eor.b	#$80,d3			; this allows us to have the full $100 range safely
-		btst	#cfbHold,(a1)		; check if note is held
+		btst	#mfbHold,mExtraFlags.w	; check if note is held
 		bne.w	dUpdateFreqOffDAC2	; if so, only update frequency
 
 dNoteOnDAC3:
@@ -244,6 +246,7 @@ dAMPSdoSFX:
 
 dAMPSdoDACSFX:
 		add.w	#cSize,a1		; go to the next channel
+		move.b	cExtraFlags(a1),mExtraFlags.w; copy flags to extra flags
 		tst.b	(a1)			; check if channel is running a tracker
 		bpl.w	.next			; if not, branch
 
@@ -265,7 +268,7 @@ dAMPSdoDACSFX:
 		jmp	dAMPSdoFMSFX(pc)	; after that, process SFX FM channels
 
 .update
-		and.b	#$FF-(1<<cfbHold)-(1<<cfbFreqFrz),(a1); clear hold and frequency freeze flags
+		and.b	#$FF-(1<<cfbFreqFrz),(a1); clear frequency freeze flags
 	dDoTracker				; process tracker
 		moveq	#0,d4			; clear rest flag
 		tst.b	d1			; check if note is being played
