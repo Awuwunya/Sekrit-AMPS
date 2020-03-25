@@ -80,16 +80,26 @@ dUpdateVolFM_SFX:
 			bne.s	locret_MuteFM	; if is, do not update anything
 		endif
 
+		btst	#cfbDisabl,(a1)		; check if channel is disabled
+		bne.s	dUpdateVolFM_Dis	; if is, branch
+
 		move.b	cVolume(a1),d1		; load FM channel volume to d1
 		ext.w	d1			; extend it to word
 		bra.s	dUpdateVolFM3		; do NOT add the master volume!
 	endif
+
+dUpdateVolFM_Dis:
+		move.w	#$4000,d1		; set volume to max (muted)
+		bra.s	dUpdateVolFM3		; process all effects
 
 dUpdateVolFM:
 	if FEATURE_DACFMVOLENV
 		btst	#cfbRest,(a1)		; check if channel is resting
 		bne.s	locret_MuteFM		; if is, do not update anything
 	endif
+
+		btst	#cfbDisabl,(a1)		; check if channel is disabled
+		bne.s	dUpdateVolFM_Dis	; if is, branch
 
 		move.b	mMasterVolFM.w,d1	; load FM master volume to d1
 		ext.w	d1			; extend to word

@@ -52,6 +52,7 @@ SystemFont:
 	include "code/draw.asm"		; rendering and visualisation routines
 	include "code/vint.asm"		; v-int routines
 	include "code/decomp.asm"	; decompressor routines
+	include "code/sndlib.asm"	; various example library functions to operate AMPS
 
 ; ===========================================================================
 DualPCM:	z80prog 0

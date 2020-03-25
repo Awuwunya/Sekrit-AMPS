@@ -40,7 +40,18 @@ VInt:
 		move.b	#Mus_FadeOut,mQueue.w	; fade out music
 		move.b	mQueue.w,MusPlay.w	;
 
-.noB		tst.b	Ctrl1Press.w		; check if pressed
+.noB		btst	#5,Ctrl1Press.w		; check if pressing C
+		beq.s	.noC			; if no, branch
+		lea	mDAC2.w,a1		; load DAC2 to a1
+
+		btst	#cfbDisabl,(a1)		; check if disabled
+		beq.s	.dis			; if not, disable
+		jsr	slEnableChannel(pc)	; enable channel
+		bra.s	.noC
+
+.dis		jsr	slDisableChannel(pc)	; disable channel
+
+.noC		tst.b	Ctrl1Press.w		; check if pressed
 		bpl.s	.noprs			; if not, branch
 		move.b	MusSel.w,mQueue.w	; copy music to queue
 		move.b	MusSel.w,MusPlay.w	; update music played

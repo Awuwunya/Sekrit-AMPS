@@ -844,7 +844,10 @@ dPlaySnd_StopSFX:
 .notrack
 		add.w	#cSizeSFX,a1		; go to next channel
 		dbf	d0,.loop		; repeat for each channel
-	dResetADSR	a4, d6, 2		; reset ADSR data for PSG SFX
+
+	if FEATURE_PSGADSR
+		dResetADSR	a4, d6, 2	; reset ADSR data for PSG SFX
+	endif
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -874,7 +877,10 @@ dStopMusic:
 		lea	mVctMus.w,a4		; load driver RAM start to a1
 		move.b	mMasterVolDAC.w,d5	; load DAC master volume to d4
 	dCLEAR_MEM	mChannelEnd-mVctMus, 32	; clear this block of memory with 32 byts per loop
-	dResetADSR	a4, d6, 3		; reset ADSR data for PSG
+
+	if FEATURE_PSGADSR
+		dResetADSR	a4, d6, 3	; reset ADSR data for PSG
+	endif
 
 	if safe=1
 		clr.b	msChktracker.w		; if in safe mode, also clear the check tracker variable!

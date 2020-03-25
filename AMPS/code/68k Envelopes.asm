@@ -202,12 +202,14 @@ dEnvCommand:
 
 .stop
 		bset	#cfbRest,(a1)		; set channel resting bit
-	dStopChannel	0			; stop channel operation
 
-	if FEATURE_PSGADSR=0
+	if FEATURE_PSGADSR
+	dStopChannel	1			; stop channel operation
+	else
+	dStopChannel	0			; stop channel operation
 		moveq	#0,d4			; set Z flag to 1
-	endif
 		rts
+	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Routine for running TL envelope programs
@@ -355,7 +357,7 @@ dProcessADSR:
 		bne.s	.normal			; if 0, emulate default behaviour
 		btst	#cfbRest,(a1)		; check if resting
 		beq.s	.rts			; if not, do not add to volume
-		moveq	#$7F,d1			; set to max volume
+		move.w	#$4000,d1		; set to max volume
 
 .rts
 		rts
@@ -420,7 +422,7 @@ dProcessADSR:
 		add.w	d4,(a3)			; add to volume
 		bpl.s	.sustain		; if not max volume, branch
 		move.b	#$7F,(a3)		; force max volume
-		moveq	#$7F,d1			; mute as well
+		move.w	#$4000,d1		; mute as well
 		rts
 ; ---------------------------------------------------------------------------
 

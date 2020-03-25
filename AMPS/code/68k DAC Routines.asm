@@ -317,12 +317,22 @@ dAMPSdoDACSFX:
 
 dUpdateVolDAC_SFX:
 	if FEATURE_SFX_MASTERVOL=0
+		btst	#cfbDisabl,(a1)		; check if channel is disabled
+		bne.s	dUpdateVolDAC_Dis	; if is, branch
+
 		move.b	cVolume(a1),d1		; get channel volume to d1
 		ext.w	d1			; extend to a word
 		bra.s	dUpdateVolDAC3		; do not add master volume
 	endif
 
+dUpdateVolDAC_Dis:
+		move.w	#$4000,d1		; set volume to max (muted)
+		bra.s	dUpdateVolDAC3		; process all effects
+
 dUpdateVolDAC:
+		btst	#cfbDisabl,(a1)		; check if channel is disabled
+		bne.s	dUpdateVolDAC_Dis	; if is, branch
+
 		move.b	mMasterVolDAC.w,d1	; load DAC master volume to d1
 		ext.w	d1			; extend to word
 

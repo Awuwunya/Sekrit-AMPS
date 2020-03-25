@@ -229,21 +229,21 @@ dAMPSdoPSG4:
 
 dNotesPSG4:
 		bra.w	.rest			; $80 - Rest note
-		moveq	#$E0,d1
+		moveq	#$FFFFFFE0,d1
 		bra.s	.noiset			; $82 - Noise mode $E0
-		moveq	#$E1,d1
+		moveq	#$FFFFFFE1,d1
 		bra.s	.noiset			; $84 - Noise mode $E1
-		moveq	#$E2,d1
+		moveq	#$FFFFFFE2,d1
 		bra.s	.noiset			; $86 - Noise mode $E2
-		moveq	#$E3,d1
+		moveq	#$FFFFFFE3,d1
 		bra.s	.noiset			; $88 - Noise mode $E3
-		moveq	#$E4,d1
+		moveq	#$FFFFFFE4,d1
 		bra.s	.noiset			; $8A - Noise mode $E4
-		moveq	#$E5,d1
+		moveq	#$FFFFFFE5,d1
 		bra.s	.noiset			; $8C - Noise mode $E5
-		moveq	#$E6,d1
+		moveq	#$FFFFFFE6,d1
 		bra.s	.noiset			; $8E - Noise mode $E6
-		moveq	#$E7,d1
+		moveq	#$FFFFFFE7,d1
 ;		bra.s	.noiset			; $90 - Noise mode $E7
 ; ---------------------------------------------------------------------------
 
@@ -300,7 +300,12 @@ dUpdateFreqPSG:
 		move.w	cFreq(a1),d2		; get channel base frequency to d2
 		bpl.s	dUpdateFreqPSG4		; if it was not rest frequency, branch
 		bset	#cfbRest,(a1)		; set channel resting flag
+
+	if FEATURE_PSGADSR
 		bra.s	dKeyOffPSG	; TODO: why tf is this needed???
+	else
+		rts
+	endif
 ; ===========================================================================
 
 dUpdateFreqPSG4:
@@ -382,16 +387,26 @@ dEnvelopePSG_SFX:
 			bne.s	locret_UpdateFreqPSG	; if is, do not update anything
 		endif
 
+		btst	#cfbDisabl,(a1)		; check if channel is disabled
+		bne.s	dEnvelopePSG_Dis	; if is, branch
+
 		move.b	cVolume(a1),d1		; load channel volume to d1
 		ext.w	d1			; extend to a word
 		bra.s	dEnvelopePSG2		; do not add master volume
 	endif
+
+dEnvelopePSG_Dis:
+		move.w	#$4000,d1		; set volume to max (muted)
+		bra.s	dEnvelopePSG2		; process all effects
 
 dEnvelopePSG:
 	if FEATURE_PSGADSR=0
 		btst	#cfbRest,(a1)		; check if channel is resting
 		bne.s	locret_UpdateFreqPSG	; if is, do not update anything
 	endif
+
+		btst	#cfbDisabl,(a1)		; check if channel is disabled
+		bne.s	dEnvelopePSG_Dis	; if is, branch
 
 		move.b	mMasterVolPSG.w,d1	; load PSG master volume to d1
 		ext.w	d1			; extend to word

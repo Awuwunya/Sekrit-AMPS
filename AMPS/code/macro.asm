@@ -105,6 +105,7 @@ cfbInt		rs.b 1		; set if interrupted by SFX. Music only
 cfbFreqFrz	rs.b 1		; set if note frequency should be "frozen". Various things do not affect frequency
 cfbCond		rs.b 1		; set if ignoring most tracker commands
 cfbVol		rs.b 1		; set if channel should update volume
+cfbDisabl	rs.b 1		; if set, channel should not make any sound. This is often controlled by the game program.
 cfbRun =	$07		; set if channel is running a tracker
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
