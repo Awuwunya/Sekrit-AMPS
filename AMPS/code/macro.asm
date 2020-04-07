@@ -21,10 +21,10 @@ FEATURE_SFX_MASTERVOL =	0	; set to 1 to make SFX use master volumes
 FEATURE_MODULATION =	1	; set to 1 to enable software modulation effect
 FEATURE_PORTAMENTO =	1	; set to 1 to enable portamento flag
 FEATURE_MODENV =	1	; set to 1 to enable modulation envelopes
-FEATURE_DACFMVOLENV =	1	; set to 1 to enable volume envelopes for FM & DAC channels.
+FEATURE_DACFMVOLENV =	1	; set to 1 to enable volume envelopes for FM & DAC channels
 FEATURE_UNDERWATER =	1	; set to 1 to enable underwater mode
 FEATURE_BACKUP =	1	; set to 1 to enable back-up channels. Used for the 1-up SFX in Sonic 1, 2 and 3K...
-FEATURE_BACKUPNOSFX =	1	; set to 1 to disable SFX while a song is backed up. Used for the 1-up SFX.
+FEATURE_BACKUPNOSFX =	1	; set to 1 to disable SFX while a song is backed up. Used for the 1-up SFX
 FEATURE_FM6 =		1	; set to 1 to enable FM6 to be used in music
 FEATURE_PSG4 =		1	; set to 1 to enable a separate PSG4 channel
 FEATURE_PSGADSR =	1	; set to 1 to enable ADSR for PSG
@@ -49,9 +49,9 @@ cPitch		rs.b 1		; pitch (transposition) offset
 cVolume		rs.b 1		; channel volume
 cData		rs.l 1		; 68k tracker address for the channel
 cStatPSG4	rs.b 0		; PSG4 type value. PSG3 and PSG4 only
-cPanning	rs.b 1		; channel panning and LFO. FM and DAC only. Not used in FM3 op2-op4.
+cPanning	rs.b 1		; channel panning and LFO. FM and DAC only. Not used in FM3 op2-op4
 cDetune		rs.b 1		; frequency detune (offset)
-cExtraFlags	rs.b 0		; various extra channel flags. SFX only.
+cExtraFlags	rs.b 0		; various extra channel flags. SFX only
 cStack		rs.b 1		; channel stack pointer. Music only
 	if FEATURE_PSGADSR
 cADSR		rs.b 0		; channel ADSR ID, PSG only
@@ -68,13 +68,13 @@ cEnvPos		rs.b 1		; volume envelope position
 cModDelay	rs.b 0		; delay before modulation starts
 cMod		rs.l 1		; modulation data address
 cModFreq	rs.w 1		; modulation frequency offset
-cModSpeed	rs.b 1		; number of frames til next modulation step
+cModSpeed	rs.b 1		; number of frames til next modulation step. 0 means modulation is disabled
 cModStep	rs.b 1		; modulation frequency offset per step
 cModCount	rs.b 1		; number of modulation steps until reversal
 	endif
 
 	if FEATURE_PORTAMENTO
-cPortaSpeed	rs.b 1		; number of frames for each portamento to complete. 0 means it is disabled.
+cPortaSpeed	rs.b 1		; number of frames for each portamento to complete. 0 means it is disabled
 cPortaFreq	rs.w 1		; frequency offset for portamento.
 cPortaDisp	rs.w 1		; frequency displacement per frame for portamento.
 	endif
@@ -105,7 +105,7 @@ cfbInt		rs.b 1		; set if interrupted by SFX. Music only
 cfbFreqFrz	rs.b 1		; set if note frequency should be "frozen". Various things do not affect frequency
 cfbCond		rs.b 1		; set if ignoring most tracker commands
 cfbVol		rs.b 1		; set if channel should update volume
-cfbDisabl	rs.b 1		; if set, channel should not make any sound. This is often controlled by the game program.
+cfbDisabl	rs.b 1		; if set, channel should not make any sound. This is often controlled by the game program
 cfbRun =	$07		; set if channel is running a tracker
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -288,8 +288,8 @@ dPSG =		$C00011		; quick reference to PSG port
 	rsset Drvmem		; Insert your RAM definition here!
 mFlags		rs.b 1		; various driver flags, see below
 mCtrPal		rs.b 1		; frame counter fo 50hz fix
-mExtraFlags	rs.b 1		; various extra flags for the current executing channel.
-mMusicFlags	rs.b 1		; extra flags specific to music channels. Music channels share flags.
+mExtraFlags	rs.b 1		; various extra flags for the current executing channel
+mMusicFlags	rs.b 1		; extra flags specific to music channels. Music channels share flags
 mComm		rs.b 8		; communications bytes
 mMasterVolFM	rs.b 0		; master volume for FM channels
 mFadeAddr	rs.l 1		; fading program address
@@ -415,9 +415,9 @@ mSize		rs.w 0		; end of the driver RAM
 ; ---------------------------------------------------------------------------
 
 	rsset 0
-mfbWater	rs.b 1		; if set, underwater mode is active
 mfbSwap		rs.b 1		; if set, swap the sfx
 mfbSpeed	rs.b 1		; if set, speed shoes are active
+mfbWater	rs.b 1		; if set, underwater mode is active
 mfbNoPAL	rs.b 1		; if set, play songs slowly in PAL region
 mfbBacked	rs.b 1		; if set, a song has been backed up already
 mfbExec		rs.b 1		; if set, AMPS is currently running
@@ -431,7 +431,7 @@ mfbPaused =	$07		; if set, sound driver is paused
 		rs.b 1		; if set, underwater mode is currently enabled.
 mfbHold		rs.b 1		; set if playing notes does not trigger note-on's
 		rs.b 3		; unused
-mfbBlockUW	rs.b 1		; if set, underwater mode can not be enabled for this channel.
+mfbBlockUW	rs.b 1		; if set, underwater mode can not be enabled for this channel
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Sound ID equates

@@ -242,10 +242,9 @@ dFreqDAC1:
 dAMPSdoSFX:
 		subq.b	#1,mTempoAcc.w		; decrement high byte of accumulator
 		bne.w	dAMPSdoDAC		; if not 0, run music once again
-		lea	mSFXDAC1-cSize.w,a1	; get SFX DAC1 channel RAM address into a1
 
 dAMPSdoDACSFX:
-		add.w	#cSize,a1		; go to the next channel
+		lea	mSFXDAC1.w,a1		; get SFX DAC1 channel RAM address into a1
 		move.b	cExtraFlags(a1),mExtraFlags.w; copy flags to extra flags
 		tst.b	(a1)			; check if channel is running a tracker
 		bpl.w	.next			; if not, branch
@@ -317,22 +316,12 @@ dAMPSdoDACSFX:
 
 dUpdateVolDAC_SFX:
 	if FEATURE_SFX_MASTERVOL=0
-		btst	#cfbDisabl,(a1)		; check if channel is disabled
-		bne.s	dUpdateVolDAC_Dis	; if is, branch
-
 		move.b	cVolume(a1),d1		; get channel volume to d1
 		ext.w	d1			; extend to a word
 		bra.s	dUpdateVolDAC3		; do not add master volume
 	endif
 
-dUpdateVolDAC_Dis:
-		move.w	#$4000,d1		; set volume to max (muted)
-		bra.s	dUpdateVolDAC3		; process all effects
-
 dUpdateVolDAC:
-		btst	#cfbDisabl,(a1)		; check if channel is disabled
-		bne.s	dUpdateVolDAC_Dis	; if is, branch
-
 		move.b	mMasterVolDAC.w,d1	; load DAC master volume to d1
 		ext.w	d1			; extend to word
 
@@ -368,16 +357,16 @@ dUpdateVolDAC2:
 
 .nocap
 	StopZ80					; wait for Z80 to stop
-		move.b	#$D2,dZ80+PCM_ChangeVolume; set volume change flag
+		move.b	#$D2,dZ80+PCM_ChangeVolume.l; set volume change flag
 
 		btst	#ctbPt2,cType(a1)	; check if this channel is DAC1
 		beq.s	.dac1			; if is, branch
-		move.b	d1,dZ80+PCM2_Volume+1	; save volume for PCM 1
+		move.b	d1,dZ80+PCM2_Volume+1.l	; save volume for PCM 1
 	StartZ80				; enable Z80 execution
 		rts
 
 .dac1
-		move.b	d1,dZ80+PCM1_Volume+1	; save volume for PCM 2
+		move.b	d1,dZ80+PCM1_Volume+1.l	; save volume for PCM 2
 	StartZ80				; enable Z80 execution
 
 locret_VolDAC:
@@ -411,3 +400,4 @@ dFreqDAC:dc.w $0000								    ; Octave NOPE - (80)
 	dc.w -$079,-$072,-$06C,-$066,-$060,-$05B,-$055,-$051,-$04C,-$048,-$044,-$040; Octave -2 - (5C - 67)
 	dc.w -$03C,-$039,-$036,-$033,-$030,-$02D,-$02B,-$028,-$026,-$024,-$022,-$020; Octave -1 - (68 - 73)
 	dc.w -$01E,-$01D,-$01B,-$019,-$018,-$017,-$015,-$014,-$013,-$012,-$011,-$010; Octave -0 - (74 - 7F)
+; ---------------------------------------------------------------------------

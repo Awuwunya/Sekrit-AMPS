@@ -47,6 +47,7 @@ dModEnvProg2:
 
 		move.b	cModEnvSens(a1),d5	; load sensitivity to d1 (unsigned value - effective range is ~ -$7000 to $8000)
 		addq.w	#1,d5			; increment sensitivity by 1 (range of 1 to $100)
+		ext.w	d4			; extend to displacement to a word
 		muls	d5,d4			; signed multiply loaded value with sensitivity
 		add.w	d4,d2			; add the frequency to channel frequency
 
@@ -204,9 +205,9 @@ dEnvCommand:
 		bset	#cfbRest,(a1)		; set channel resting bit
 
 	if FEATURE_PSGADSR
-	dStopChannel	1			; stop channel operation
+		dStopChannel	1		; stop channel operation
 	else
-	dStopChannel	0			; stop channel operation
+		dStopChannel	0		; stop channel operation
 		moveq	#0,d4			; set Z flag to 1
 		rts
 	endif
@@ -330,7 +331,7 @@ dEnvCommandTL:
 ; ---------------------------------------------------------------------------
 
 .stop
-		moveq	#$7F,d5			; set volume to $7F
+		move.w	#$4000,d5		; set volume to maximum
 		rts
 	endif
 ; ===========================================================================

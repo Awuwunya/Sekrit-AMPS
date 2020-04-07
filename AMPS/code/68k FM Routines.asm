@@ -485,7 +485,7 @@ dUpdateFreqFM:
 	if FEATURE_MODULATION
 		tst.b	cModSpeed(a1)		; check if channel is modulating
 		beq.s	dUpdateFreqFM2		; if not, branch
-		add.w	cModFreq(a1),d2		; add channel modulation frequency offset to d2z
+		add.w	cModFreq(a1),d2		; add channel modulation frequency offset to d2
 	endif
 
 dUpdateFreqFM2:
@@ -594,6 +594,7 @@ dKeyOffSM:
 
 dKeyOffFM3:
 	endif
+
 		btst	#mfbHold,mExtraFlags.w	; check if note is held
 		bne.s	.rts			; if so, do not note off
 		move.b	cType(a1),d3		; load channel type value to d3
@@ -632,3 +633,4 @@ dFreqFM_:
 .x =			.x+$101
 		endr
 	endif
+; ---------------------------------------------------------------------------

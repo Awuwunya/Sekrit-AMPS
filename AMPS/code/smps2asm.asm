@@ -121,8 +121,7 @@ sHeaderPSG	macro loc,pitch,vol,detune,volenv
 
 ; Header - Set up SFX Channel
 sHeaderSFX	macro flags,type,loc,pitch,vol
-	dc.b \flags,\type
-	dc.b (\pitch)&$FF,(\vol)&$FF
+	dc.b \flags,\type,(\pitch)&$FF,(\vol)&$FF
 	dc.w \loc-*
     endm
 ; ---------------------------------------------------------------------------------------------

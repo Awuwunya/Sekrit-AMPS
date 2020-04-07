@@ -31,7 +31,7 @@ dNoteToutFM	macro
 	dNoteToutHandler			; include timeout handler
 		bset	#cfbRest,(a1)		; set track to resting
 		bsr.w	dKeyOffFM		; key off FM
-		bra.\0	.next			; jump to next track
+		bra.w	.next			; jump to next track
 .endt
     endm
 ; ===========================================================================
@@ -485,8 +485,8 @@ dKeyOnFM	macro	sfx
 		btst	#cfbRest,(a1)		; check if channel is resting
 		bne.s	.k			; if so, do not note on
 
-		move.b	cType(a1),d3		; get channel type bits
-		ori.b	#$F0,d3			; turn all FM operators on
+		moveq	#$FFFFFFF0,d3		; turn all FM operators on
+		or.b	cType(a1),d3		; or channel type bits
 	CheckCue				; check that cue is valid
 	stopZ80
 	WriteYM1	#$28, d3		; Key on: turn all FM operators on
@@ -655,4 +655,4 @@ dResetADSR	macro areg, dreg, mode
 		endr
 	endif
     endm
-; ===========================================================================
+; ---------------------------------------------------------------------------

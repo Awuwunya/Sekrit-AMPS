@@ -285,10 +285,6 @@ dPlaySnd_Music:
 .noback
 	endif
 ; ---------------------------------------------------------------------------
-; Earlier we used to stop the channels immediately, but due to requiring
-; the channel back-up feature, this was moved here instead. It still works
-; out the exact same though...
-; ---------------------------------------------------------------------------
 
 		jsr	dStopMusic(pc)		; mute hardware and reset all driver memory
 		jsr	dResetVolume(pc)	; reset volumes and end any fades
@@ -305,7 +301,7 @@ dPlaySnd_Music:
 		or.b	#1<<mfbWater,mMusicFlags.w; set underwater mode as enabled
 
 .nouwo
-		and.b	#~(1<<mfbNoPAL),mFlags.w; enable PAL fix
+		and.b	#$FF-(1<<mfbNoPAL),mFlags.w; enable PAL fix
 		move.w	(a2)+,d3		; load song tempo to d3
 		bpl.s	.noPAL			; branch if the loaded value was positive
 		or.b	#1<<mfbNoPAL,mFlags.w	; disable PAL fix
@@ -494,10 +490,12 @@ dPSGtypeVals:	dc.b ctPSG1, ctPSG2, ctPSG3
 ;
 ; thrash:
 ;   d0 - Loop counter for each channel
+;   d6 - Size of each channel
 ;   a1 - Current sound channel address that is being processed
 ;   a2 - Current address into the tracker data
 ;   a3 - Used for channel address calculation
 ;   a4 - Type values arrays
+;   d6 - Temporarily used to hold the speed shoes tempo
 ;   all - other dregisters are gonna be used too
 ; ---------------------------------------------------------------------------
 
@@ -668,6 +666,7 @@ dPlaySnd_SFX:
 		cmpi.b	#ctPSG3|$1F,d4		; check if we sent command about PSG3
 		bne.s	.clearCh		; if not, skip
 		move.b	#ctPSG4|$1F,dPSG	; send volume mute command for PSG4 to PSG
+
 	if FEATURE_PSGADSR
 		bset	#cfbInt,mPSG4+cFlags.w	; override music PSG4 too
 	endif
@@ -1061,7 +1060,7 @@ dPlaySnd_UpdateEnableUW:
 
 .nono\@
 .ch =		.ch+cSizeSFX			; go to next channel
-		endr
+	endr
 		.wtf				; wtf
     endm
 		rts
