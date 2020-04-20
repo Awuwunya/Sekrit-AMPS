@@ -410,7 +410,7 @@ dEnvelopePSG_Dis:
 dEnvelopePSG:
 	if FEATURE_PSGADSR=0
 		btst	#cfbRest,(a1)		; check if channel is resting
-		bne.w	locret_UpdateFreqPSG	; if is, do not update anything
+		bne.s	locret_UpdateFreqPSG	; if is, do not update anything
 	endif
 
 		btst	#cfbDisabl,(a1)		; check if channel is disabled
