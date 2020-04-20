@@ -43,16 +43,16 @@ dGatePSG	macro	addr
 		bne.s	.endt			; if still not 0, branch
 		or.b	#(1<<cfbRest)|(1<<cfbVol),(a1); set channel to resting and request a volume update (update on next note-on)
 
-		if FEATURE_PSGADSR
-			jsr	dKeyOffPSG2(pc)	; key off PSG channel
-		else
-			jsr	dMutePSGmus(pc)	; mute PSG channel
-		endif
-
-	if narg=0
-		bra.w	.next			; jump to next track
+	if FEATURE_PSGADSR
+		jsr	dKeyOffPSG2(pc)		; key off PSG channel
 	else
-		jmp	\addr(pc)		; jump directly to address
+		jsr	dMutePSGmus(pc)		; mute PSG channel
+
+		if narg=0
+			bra.w	.next		; jump to next track
+		else
+			jmp	\addr(pc)	; jump directly to address
+		endif
 	endif
 .endt
     endm
