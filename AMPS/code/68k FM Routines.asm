@@ -404,7 +404,7 @@ dAMPSnextFM:
 		subq.b	#1,cDuration(a1)	; decrease note duration
 		beq.w	.update			; if timed out, update channel
 
-	dNoteToutFM.w				; handle FM-specific note timeout behavior
+	dGateFM					; handle FM-specific gate behavior
 	dCalcFreq				; calculate channel base frequency
 	dModPorta dAMPSdoPSG, dAMPSnextFM, 0	; run modulation + portamento code
 		bsr.w	dUpdateFreqFM2		; send FM frequency to hardware

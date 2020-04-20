@@ -1,21 +1,14 @@
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Note timout handler macro
+; Gate handler macro for DAC
 ; ---------------------------------------------------------------------------
 
-dNoteToutHandler	macro
-		tst.b	cGateCur(a1)		; check if timer is 0
-		beq.s	.endt			; if is, do not timeout
+dGateDAC	macro
+		tst.b	cGateCur(a1)		; check if gate timer is 0
+		beq.s	.endt			; if is, skip
 		subq.b	#1,cGateCur(a1)		; decrease delay by 1
 		bne.s	.endt			; if still not 0, branch
-    endm
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Note timout handler macro for DAC
-; ---------------------------------------------------------------------------
 
-dNoteToutDAC	macro
-	dNoteToutHandler			; include timeout handler
 		moveq	#0,d3			; play stop sample
 		bsr.w	dNoteOnDAC2		; ''
 		bra.w	.next			; jump to next track
@@ -24,11 +17,15 @@ dNoteToutDAC	macro
     endm
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Note timout handler macro for FM
+; Gate handler macro for FM
 ; ---------------------------------------------------------------------------
 
-dNoteToutFM	macro
-	dNoteToutHandler			; include timeout handler
+dGateFM		macro
+		tst.b	cGateCur(a1)		; check if gate timer is 0
+		beq.s	.endt			; if is, skip
+		subq.b	#1,cGateCur(a1)		; decrease delay by 1
+		bne.s	.endt			; if still not 0, branch
+
 		bset	#cfbRest,(a1)		; set track to resting
 		bsr.w	dKeyOffFM		; key off FM
 		bra.w	.next			; jump to next track
@@ -36,15 +33,18 @@ dNoteToutFM	macro
     endm
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Note timout handler macro for PSG
+; Gate handler macro for PSG
 ; ---------------------------------------------------------------------------
 
-dNoteToutPSG	macro	addr
-	dNoteToutHandler			; include timeout handler
+dGatePSG	macro	addr
+		tst.b	cGateCur(a1)		; check if gate timer is 0
+		beq.s	.endt			; if is, skip
+		subq.b	#1,cGateCur(a1)		; decrease delay by 1
+		bne.s	.endt			; if still not 0, branch
 		or.b	#(1<<cfbRest)|(1<<cfbVol),(a1); set channel to resting and request a volume update (update on next note-on)
 
 		if FEATURE_PSGADSR
-			jsr	dKeyOffPSG(pc)	; key off PSG channel
+			jsr	dKeyOffPSG2(pc)	; key off PSG channel
 		else
 			jsr	dMutePSGmus(pc)	; mute PSG channel
 		endif
@@ -572,6 +572,7 @@ dGetFreqPSG	macro
 			jsr	dMutePSGmus(pc)	; mute PSG channel
 		endif
 		bra.s	.freqgot
+; ---------------------------------------------------------------------------
 
 .norest
 		add.b	cPitch(a1),d1		; add pitch offset to note
@@ -637,7 +638,7 @@ dStopChannel	macro	stop
 ; ---------------------------------------------------------------------------
 
 dResetADSR	macro areg, dreg, mode
-	move.w	#$7F00|admNormal|adpRelease,\dreg; load default value to dreg
+	move.w	#$7F00|admImm|adpRelease,\dreg	; load default value to dreg
 
 	if \mode&1
 		lea	mADSR.w,\areg		; load ADSR address to areg

@@ -134,7 +134,7 @@ dAMPSnextPSG:
 		subq.b	#1,cDuration(a1)	; decrease note duration
 		beq.w	.update			; if timed out, update channel
 
-	dNoteToutPSG				; handle PSG-specific note timeout behavior
+	dGatePSG				; handle PSG-specific gate behavior
 	dCalcFreq				; calculate channel base frequency
 	dModPorta .endm, -1, -1			; run modulation + portamento code
 		bsr.w	dUpdateFreqPSG2		; if frequency needs changing, do it
@@ -195,7 +195,7 @@ dAMPSdoPSG4:
 		subq.b	#1,cDuration(a1)	; decrease note duration
 		beq.s	.update			; if timed out, update channel
 
-	dNoteToutPSG	dAMPSdoSFX		; handle PSG-specific note timeout behavior
+	dGatePSG	dAMPSdoSFX		; handle PSG-specific gate behavior
 		jsr	dEnvelopePSG(pc)	; run envelope program
 
 .next
@@ -278,6 +278,14 @@ dNotesPSG4:
 
 dKeyOffPSG:
 		bset	#cfbVol,(a1)		; force volume update
+
+dKeyOffPSG2:
+		tst.b	cADSR(a1)		; check if ADSR is 0
+		bne.s	.normal			; if so, there is an exception
+		move.b	#$7F,(a3)		; forcibly mute ADSR
+		move.w	#$4000,d1		; set volume to mute
+
+.normal
 		moveq	#admMask,d3		; prapre only the mode bits
 		and.b	adFlags(a3),d3		; get mode bits from flags
 
@@ -402,7 +410,7 @@ dEnvelopePSG_Dis:
 dEnvelopePSG:
 	if FEATURE_PSGADSR=0
 		btst	#cfbRest,(a1)		; check if channel is resting
-		bne.s	locret_UpdateFreqPSG	; if is, do not update anything
+		bne.w	locret_UpdateFreqPSG	; if is, do not update anything
 	endif
 
 		btst	#cfbDisabl,(a1)		; check if channel is disabled
