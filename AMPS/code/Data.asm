@@ -203,9 +203,10 @@ ModEnvs_End:
 sfxaddr	incSFX				; include all sfx
 musaddr	incMus				; include all music
 musend
+	even
 
 dSoundNames:
-;	allnames			; include all sound names in an array
+	allnames			; include all sound names in an array
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Include samples and filters

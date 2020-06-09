@@ -1,6 +1,6 @@
 Drowning_Header:
 	sHeaderInit
-	sHeaderTempo	$80, $80		; that $8X means that the 50hz "fix" is not applied to this song.
+	sHeaderTempo	$A0, $80
 	sHeaderCh	$05, $00
 	sHeaderDAC	Drowning_DAC1
 	sHeaderDAC	Drowning_DAC2

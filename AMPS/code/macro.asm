@@ -101,6 +101,7 @@ cModEnvSens	rs.b 1		; sensitivity of modulation envelope
 		rs.w 0
 cChipFreq	rs.w 1		; frequency sent to the chip
 cChipVol	rs.b 1		; volume sent to the chip
+cChipFlags	rs.b 1		; various flags
 	endif
 
 cLoop		rs.b 3		; loop counter values

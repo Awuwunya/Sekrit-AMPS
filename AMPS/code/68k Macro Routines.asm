@@ -338,6 +338,10 @@ dProcNote	macro	sfx, chan
 		move.l	a2,cData(a1)		; save tracker address
 		move.b	cLastDur(a1),cDuration(a1); copy stored duration
 
+	if FEATURE_SOUNDTEST
+		move.b	mExtraFlags.w,cChipFlags(a1); copy extra flags to memory
+	endif
+
 	if FEATURE_PORTAMENTO&(\chan<>4)
 		move.w	(sp)+,d1		; load the last frequency to d1
 		if \chan<=0
