@@ -11,7 +11,6 @@
 dCommands:
 		add.b	d1,d1			; quadruple command ID
 		add.b	d1,d1			; since each entry is 4 bytes large
-
 		btst	#cfbCond,(a1)		; check if condition state
 		bne.w	.falsecomm		; branch if false
 		jmp	.comm-$80(pc,d1.w)	; jump to appropriate handler
@@ -93,10 +92,10 @@ dCommands:
 
 	if FEATURE_MODTL
 tlmod	macro name
-	bra.w	\name\1				; jump for operator 1
-	bra.w	\name\2				; jump for operator 2
-	bra.w	\name\3				; jump for operator 3
-	bra.w	\name\4				; jump for operator 4
+	bra.w	\name\_1			; jump for operator 1
+	bra.w	\name\_2			; jump for operator 2
+	bra.w	\name\_3			; jump for operator 3
+	bra.w	\name\_4			; jump for operator 4
     endm
 
 		tlmod	dcModOffTL		; FF 5x - Turn off TL Modulation for operator x (TL_MOD - MODS_OFF)
@@ -118,16 +117,16 @@ tlmod	macro name
 
 dcskip	macro amount
 	if \amount=0
-		rts
+		rts				; save a few cycles by immediately returning
 	else
-		addq.w	#\amount,a2
+		addq.w	#\amount,a2		; skip this amount of bytes
 	endif
 	rts
    endm
 
 .false
 		dcskip	1			; E0 - Panning, AMS, FMS (PANAFMS - PAFMS_PAN)
-		dcskip	1			; E1 - Add xx to channel frequency displacement (DETUNE)
+		dcskip	1			; E1 - Set channel frequency displacement to xx (DETUNE_SET)
 		dcskip	1			; E2 - Add xx to channel frequency displacement (DETUNE)
 		dcskip	1			; E3 - Set channel pitch to xx (TRANSPOSE - TRNSP_SET)
 		dcskip	1			; E4 - Add xx to channel pitch (TRANSPOSE - TRNSP_ADD)
@@ -160,28 +159,25 @@ dcskip	macro amount
 		bra.w	.metacall		; FF - META
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Tracker commands for handling spindash revving.
-; The way spindash revving works, is it actually just
-; increments a counter each time, and this counter is
-; added into the channel pitch offset.
+; Tracker commands for handling spindash revving
+; The way spindash revving works, is it actually just increments a counter
+; each time, and this counter is added into the channel pitch offset.
 ; ---------------------------------------------------------------------------
 
 dcSpRev:
-		move.b	mSpindash.w,d3		; load spindash rev counter to d0
-		addq.b	#1,mSpindash.w		; increment spindash rev counter
-		add.b	d3,cPitch(a1)		; add d0 to channel pitch offset
+		move.b	mSpindash.w,d3		; load spindash rev counter to d3
+		add.b	d3,cPitch(a1)		; add d3 to channel pitch offset
 
 		cmp.b	#$C-1,d3		; check if this is the max pitch offset
-		blo.s	.rts			; if not, skip
-		subq.b	#1,mSpindash.w		; cap at pitch offset $C
+		bhs.s	.rts			; if yes, skip
+		addq.b	#1,mSpindash.w		; increment spindash rev counter
 
 .rts
 		rts
+; ---------------------------------------------------------------------------
 
 dcSpReset:
 		clr.b	mSpindash.w		; reset spindash rev counter
-
-Return_dcSpReset:
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -198,7 +194,7 @@ dcPan:
 
 		moveq	#$37,d3			; prepare bits to keep
 		and.b	cPanning(a1),d3		; and with channel LFO settings
-		or.b	(a2)+,d3		; or panning value
+		or.b	(a2)+,d3		; OR panning value
 		move.b	d3,cPanning(a1)		; save as channel panning
 
 		btst	#ctbDAC,cType(a1)	; check if this is a DAC channel
@@ -227,7 +223,7 @@ dcPan:
 .rts
 		rts
 ; ---------------------------------------------------------------------------
-; Since the DAC channels have or based panning behavior, we need this
+; Since the DAC channels have OR based panning behavior, we need this
 ; piece of code to update its panning
 ; ---------------------------------------------------------------------------
 
@@ -238,7 +234,7 @@ dcPan:
 		move.b	mSFXDAC1+cPanning.w,d3	; read panning value from SFX DAC1
 
 .nodacsfx
-		or.b	mDAC2+cPanning.w,d3	; or the panning value from music DAC2
+		or.b	mDAC2+cPanning.w,d3	; OR the panning value from music DAC2
 	CheckCue				; check that YM cue is valid
 	stopZ80
 	WriteYM2	#$B6, d3		; Panning & LFO
@@ -252,8 +248,9 @@ dcPan:
 
 dcaDetune:
 		move.b	(a2)+,d3		; load detune offset from tracker
-		add.b	d3,cDetune(a1)		; Add to channel detune offset
+		add.b	d3,cDetune(a1)		; Add to channel detune
 		rts
+; ---------------------------------------------------------------------------
 
 dcsDetune:
 		move.b	(a2)+,cDetune(a1)	; load detune offset from tracker to channel
@@ -263,14 +260,15 @@ dcsDetune:
 ; Tracker command for changing channel volume
 ; ---------------------------------------------------------------------------
 
-dcsVolume:
-		move.b	(a2)+,cVolume(a1)	; load volume from tracker to channel
-		bset	#cfbVol,(a1)		; set volume update flag
-		rts
-
 dcaVolume:
 		move.b	(a2)+,d3		; load volume from tracker
 		add.b	d3,cVolume(a1)		; add to channel volume
+		bset	#cfbVol,(a1)		; set volume update flag
+		rts
+; ---------------------------------------------------------------------------
+
+dcsVolume:
+		move.b	(a2)+,cVolume(a1)	; load volume from tracker to channel
 		bset	#cfbVol,(a1)		; set volume update flag
 		rts
 ; ===========================================================================
@@ -279,7 +277,7 @@ dcaVolume:
 ; ---------------------------------------------------------------------------
 
 dcSampDAC:
-		move.w	#$100,cFreq(a1)		; reset to defualt base frequency
+		move.w	#$100,cFreq(a1)		; reset to default base frequency
 		bclr	#cfbMode,(a1)		; enable sample mode
 		rts
 ; ===========================================================================
@@ -326,8 +324,9 @@ dcGate:
 
 dcaTransp:
 		move.b	(a2)+,d3		; load pitch offset from tracker
-		add.b	d3,cPitch(a1)		; add to channel pitch offset
+		add.b	d3,cPitch(a1)		; add to channel pitch
 		rts
+; ---------------------------------------------------------------------------
 
 dcsTransp:
 		move.b	(a2)+,cPitch(a1)	; load pitch offset from tracker to channel
@@ -338,43 +337,28 @@ dcsTransp:
 ; ---------------------------------------------------------------------------
 
 dcsTempoShoes:
-	dREAD_WORD	a2, d3			; load tempo value from tracker
-		move.w	d3,mTempoSpeed.w	; save as the speed shoes tempo
-		btst	#mfbSpeed,mFlags.w	; check if speed shoes mode is active
-		bne.s	dcsTempoCur		; if is, load as current tempo too
+		move.b	(a2)+,d3		; load tempo value from tracker
+		move.b	d3,mSpeed.w		; save as the speed shoes tempo
+		move.b	d3,mSpeedAcc.w		; copy to speed shoes tempo accumulator
 		rts
+; ---------------------------------------------------------------------------
 
 dcsTempo:
-	dREAD_WORD	a2, d3			; load tempo value from tracker
-		move.w	d3,mTempoMain.w		; save as the main tempo
-		btst	#mfbSpeed,mFlags.w	; check if speed shoes mode is active
-		bne.s	locret_Tempo		; if not, load as current tempo too
-
-dcsTempoCur:
-		move.w	d3,mTempo.w		; save as current tempo
-
-locret_Tempo:
+		move.b	(a2)+,d3		; load tempo value from tracker
+		move.b	d3,mTempo.w		; save as the main tempo
+		move.b	d3,mTempoAcc.w		; copy to current tempo
 		rts
+; ---------------------------------------------------------------------------
 
 dcaTempoShoes:
 		move.b	(a2)+,d3		; load tempo value from tracker
-		ext.w	d3			; extend to word
-		add.w	d3,mTempoSpeed.w	; add to the speed shoes tempo
-
-		btst	#mfbSpeed,mFlags.w	; check if speed shoes mode is active
-		bne.s	dcaTempoCur		; if is, add to current tempo too
+		add.b	d3,mSpeed.w		; add to the speed shoes tempo
 		rts
+; ---------------------------------------------------------------------------
 
 dcaTempo:
 		move.b	(a2)+,d3		; load tempo value from tracker
-		ext.w	d3			; extend to word
-		add.w	d3,mTempoMain.w		; add to the main tempo
-
-		btst	#mfbSpeed,mFlags.w	; check if speed shoes mode is active
-		bne.s	locret_Tempo		; if not, add to current tempo too
-
-dcaTempoCur:
-		add.w	d3,mTempo.w		; add to current tempo
+		add.b	d3,mTempo.w		; add to the main tempo
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -392,6 +376,7 @@ dcNoisePSG:
 		move.b	#ctPSG4,cType(a1)	; make PSG3 act on behalf of PSG4
 		move.b	d3,dPSG			; send command to PSG port
 		rts
+; ---------------------------------------------------------------------------
 
 .psg3
 		move.b	#ctPSG3,cType(a1)	; make PSG3 not act on behalf of PSG4
@@ -399,7 +384,7 @@ dcNoisePSG:
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Tracker command for playing another music or SFX
+; Tracker command for playing another sound
 ; ---------------------------------------------------------------------------
 
 dcSound:
@@ -414,7 +399,7 @@ Return_dcSound:
 
 dcFilter:
 		move.b	(a2)+,d4		; load filter bank number from tracker
-		jmp	dSetFilter(pc)		; load filter bank instructions to Z80 RAM
+		jmp	dSetFilter(pc)		; update filter bank instructions to Z80 RAM
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Tracker command for writing a YM command to YMCue
@@ -442,10 +427,11 @@ dcYM:
 
 	InitChYM				; prepare to write to YM channel
 	stopZ80
-	WriteChYM	d3, d1			; write to the channel
+	WriteChYM	d3, d1			; write register to the channel
 	;	st	(a0)			; write end marker
 	startZ80
 		rts
+; ---------------------------------------------------------------------------
 
 	if FEATURE_FM3SM
 .dosm
@@ -501,14 +487,14 @@ dcsFreqNote:
 ; ---------------------------------------------------------------------------
 
 dcCont:
-		subq.b	#1,mContCtr.w		; decrease continous sfx counter
+		subq.b	#1,mContCtr.w		; decrease continous loop counter
 		bpl.s	dcJump			; if positive, jump to routine
 		clr.b	mContLast.w		; clear continous SFX ID
 		addq.w	#2,a2			; skip over jump offset
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Tracker command for calling a tracker subroutine
+; Tracker command for calling a tracker routine
 ; ---------------------------------------------------------------------------
 
 dcCall:
@@ -523,11 +509,12 @@ dcCall:
 	if safe=1
 		AMPS_Debug_dcCall2		; check if we overflowed the space
 	endif
+
 		move.l	a2,(a1,d4.w)		; save current address in stack
 		move.b	d4,cStack(a1)		; save stack pointer
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Tracker command for jumping to another tracker location
+; Tracker command for jumping to another tracker routine
 ; ---------------------------------------------------------------------------
 
 dcJump:
@@ -542,6 +529,7 @@ dcJump:
 dcLoop:
 		moveq	#0,d4
 		move.b	(a2)+,d4		; load loop index from tracker to d4
+
 	if safe=1
 		AMPS_Debug_dcLoop		; check if loop index is valid
 	endif
@@ -550,11 +538,33 @@ dcLoop:
 		bne.s	.loopok			; if nonzero, branch
 		move.b	2(a2),cLoop(a1,d4.w)	; reload loop counter
 		bra.s	dcJump			; jump to routine
+; ---------------------------------------------------------------------------
 
 .loopok
 		subq.b	#1,cLoop(a1,d4.w)	; decrease loop counter
 		bne.s	dcJump			; if not 0, jump to routine
 		addq.w	#3,a2			; skip over jump offset
+		rts
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Tracker command for returning from tracker routine
+; ---------------------------------------------------------------------------
+
+dcReturn:
+	if safe=1
+		AMPS_Debug_dcReturn1		; check if this channel supports the stack
+	endif
+
+		moveq	#4,d3			; deallocate stack space
+		add.b	cStack(a1),d3		; add the channel stack pointer to d3
+		move.b	d3,cStack(a1)		; save stack pointer
+
+		movea.l	-4(a1,d3.w),a2		; load the address to return to
+		addq.w	#2,a2			; skip the call address parameter
+
+	if safe=1
+		AMPS_Debug_dcReturn2		; check if we underflowed the space
+	endif
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -581,12 +591,10 @@ dcPortamento:
 dcMod68K:
 	if FEATURE_MODULATION
 		move.l	a2,cMod(a1)		; set modulation data address
-		addq.w	#4,a2			; skip all the modulation data
-		st	cModSpeed(a1)		; enable modulation
-		rts
-
-	elseif safe=1
-		AMPS_Debug_dcModulate		; display an error if disabled
+		addq.w	#2,a2			; skip all the modulation data
+		move.b	(a2)+,cModStep(a1)	; copy step offset
+		move.b	(a2)+,cModDelay(a1)	; copy delay
+	; continue to enabling modulation
 	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -595,17 +603,14 @@ dcMod68K:
 
 dcModOn:
 	if FEATURE_MODULATION
-		tst.b	cModSpeed(a1)		; check if already enabled
-		bne.s	.rts			; if so, do not mess with the settings
-		move.b	#1,cModSpeed(a1)	; enable modulation (step immediately)
-
-.rts
+		bset	#cfbMod,(a1)		; enable modulation
 		rts
 	endif
+; ---------------------------------------------------------------------------
 
 dcModOff:
 	if FEATURE_MODULATION
-		clr.b	cModSpeed(a1)		; disable modulation
+		bclr	#cfbMod,(a1)		; disable modulation
 		rts
 	endif
 ; ===========================================================================
@@ -624,44 +629,27 @@ dcsModFreq:
 ; Tracker command for resetting modulation
 ; ---------------------------------------------------------------------------
 
-dcsModReset:
+dcModReset:
 	if FEATURE_MODULATION
 		move.l	cMod(a1),a4		; get modulation data address
 		clr.w	cModFreq(a1)		; clear frequency offset
 		move.b	(a4)+,cModSpeed(a1)	; copy speed
 
 		move.b	(a4)+,d4		; get number of steps
+		beq.s	.set			; branch if 0 specifically (otherwise this would cause a problem)
 		lsr.b	#1,d4			; halve it
-		move.b	d4,cModCount(a1)	; save as the current number of steps
+		bne.s	.set			; if result is not 0, branch
+		moveq	#1,d4			; use 1 is the initial count, not 0!
 
-		move.b	(a4)+,cModDelay(a1)	; copy delay
+.set
+		move.b	d4,cModCount(a1)	; save as the current number of steps
 		move.b	(a4)+,cModStep(a1)	; copy step offset
+		move.b	(a4)+,cModDelay(a1)	; copy delay
 		rts
 
 	elseif safe=1
 		AMPS_Debug_dcModulate		; display an error if disabled
 	endif
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Tracker command for returning from tracker subroutine
-; ---------------------------------------------------------------------------
-
-dcReturn:
-	if safe=1
-		AMPS_Debug_dcReturn1		; check if this channel supports the stack
-	endif
-		moveq	#0,d3
-		move.b	cStack(a1),d3		; get channel stack pointer
-		movea.l	(a1,d3.w),a2		; load the address to return to
-
-		addq.w	#2,a2			; skip the call address parameter
-		addq.b	#4,d3			; deallocate stack space
-		move.b	d3,cStack(a1)		; save stack pointer
-
-	if safe=1
-		AMPS_Debug_dcReturn2		; check if we underflowed the space
-	endif
-		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Tracker command for initializing special FM3 mode
@@ -689,7 +677,7 @@ dcSpecFM3:
 	dSetFM3SM	d3			; enable FM3 special mode
 
 copychFM3SM	macro ch, type
-	move.w	#((1<<cfbRun)|(1<<cfbVol))<<8|type,\ch+cFlags.w; enable channel tracker and set type
+	move.w	#($100<<cfbRun)|($100<<cfbVol)|\type,\ch+cFlags.w; enable channel tracker and set type
 	move.l	a4,\ch+cData.w			; save data address
 
 	move.b	#cSize,\ch+cStack.w		; set stack address
@@ -773,18 +761,17 @@ dcBackup:
 	if FEATURE_BACKUP
 		addq.l	#4,sp			; stop the other channels from playing
 		btst	#mfbBacked,mFlags.w	; check if there is a backed up track
-		beq.w	dPlaySnd_Stop		; if not, just stop all music instead....
+		beq.w	dPlaySnd_Stop		; if not, just stop all music instead
 		jsr	dPlaySnd_Stop(pc)	; gotta do it anyway tho but continue below
 ; ---------------------------------------------------------------------------
 ; The reason we do fade in right here instead of later, is so we can update
-; the FM voices with correct volume, no need to update volume later...
+; the FM voices with correct volume, no need to update volume later
 ; ---------------------------------------------------------------------------
 
 		lea	dFadeInDataLog(pc),a4	; prepare stock fade in program to a4
 		jsr	dLoadFade(pc)		; initiate fade in
 
-		move.l	mBackTempoMain.w,mTempoMain.w; restore tempo settings
-		move.l	mBackTempo.w,mTempo.w	; restore tempo settings
+		move.l	mBackSpeed.w,mSpeed.w	; restore tempo settings
 		move.l	mBackVctMus.w,mVctMus.w	; restore voice table address
 
 		lea	mBackUpLoc.w,a4		; load source address to a4
@@ -818,35 +805,15 @@ dcBackup:
 	endr					; this actually saves some cycles
 		dbf	d3,.volloop		; loop for all bytes
 
-		moveq	#$7F,d3			; prepare max volume to d2
+		moveq	#$7F,d3			; prepare max volume to d3
 		move.b	d3,dZ80+PCM1_VolumeCur+1; set PCM1 volume as mute
 		move.b	d3,dZ80+PCM2_VolumeCur+1; set PCM2 volume as mute
 	startZ80
 ; ---------------------------------------------------------------------------
-; Special logic to handle PSG4
-; ---------------------------------------------------------------------------
-
-		move.b	#$FF,dPSG		; mute PSG4
-	if FEATURE_PSG4
-		tst.b	mPSG4.w			; check if PSG4 is running
-		bpl.s	.cpsg3			; if not, skip
-		move.b	mPSG4+cStatPSG4.w,dPSG.l; update PSG4 status to PSG port
-		bset	#cfbVol,mPSG4+cFlags.w	; set volume update flag
-		bra.s	.dofm
-
-.cpsg3
-	endif
-
-		cmp.b	#ctPSG4,mPSG3+cType.w	; check if PSG3 channel is in PSG4 mode
-		bne.s	.dofm			; if not, skip
-		move.b	mPSG3+cStatPSG4.w,dPSG.l; update PSG4 status to PSG port
-		bset	#cfbVol,mPSG4+cFlags.w	; set volume update flag
-; ---------------------------------------------------------------------------
 ; The FM instruments need to be updated! Since this process includes volume
-; updates, they do not need to be done later...
+; updates, they do not need to be done later
 ; ---------------------------------------------------------------------------
 
-.dofm
 		lea	mFM1.w,a1		; start at music FM1
 		moveq	#Mus_FM-1,d0		; load FM channel count to d0
 	if FEATURE_MODTL
@@ -859,7 +826,8 @@ dcBackup:
 
 		moveq	#0,d4
 		move.b	cVoice(a1),d4		; load FM voice ID of the channel to d4
-		bsr.s	dUpdateVoiceFM		; update FM voice for each channel
+		bsr.w	dUpdateVoiceFM		; update FM voice for each channel
+; ---------------------------------------------------------------------------
 
 .nofm
 	if FEATURE_MODTL
@@ -877,6 +845,26 @@ dcBackup:
 	endif
 		add.w	#cSize,a1		; advance to next channel
 		dbf	d0,.fmloop		; loop for all FM channels
+; ---------------------------------------------------------------------------
+; Special logic to handle PSG4
+; ---------------------------------------------------------------------------
+
+		move.b	#$FF,dPSG		; mute PSG4
+	if FEATURE_PSG4
+		tst.b	mPSG4.w			; check if PSG4 is running
+		bpl.s	.cpsg3			; if not, skip
+		move.b	mPSG4+cStatPSG4.w,dPSG; update PSG4 status to PSG port
+		bset	#cfbVol,mPSG4+cFlags.w	; set volume update flag
+		rts
+
+.cpsg3
+	endif
+		cmp.b	#ctPSG4,mPSG3+cType.w	; check if PSG3 channel is in PSG4 mode
+		bne.s	locret_Backup		; if not, skip
+		move.b	mPSG3+cStatPSG4.w,dPSG; update PSG4 status to PSG port
+	if FEATURE_PSG4
+		bset	#cfbVol,mPSG4+cFlags.w	; set volume update flag
+	endif
 
 	elseif safe=1
 		AMPS_Debug_dcBackup
@@ -891,7 +879,7 @@ locret_Backup:
 
 dcVoice:
 		moveq	#0,d4
-		move.b	(a2)+,d4		; load voice/sample/volume envelope from tracker to d1
+		move.b	(a2)+,d4		; load voice/sample/volume envelope from tracker to d4
 		move.b	d4,cVoice(a1)		; save to channel
 
 		tst.b	cType(a1)		; check if this is a PSG channel
@@ -906,6 +894,7 @@ dcVoice:
 		move.b	(a4,d4.w),d5		; load the mode to d5
 		move.w	d5,(a3)			; save volume and flags to ADSR
 		rts
+; ---------------------------------------------------------------------------
 
 .noPSG
 	else
@@ -923,7 +912,8 @@ dcVoice:
 ; Subroutine for sending the FM voice to YM2612
 ; This routine is speed optimized in a way that allows Dual PCM
 ; to only be stopped for as long as it must be. This will waste
-; some cycles for 68000, but it will help improve DAC quality.
+; some cycles for 68000, but it will help improve DAC quality
+; ---------------------------------------------------------------------------
 ;
 ; input:
 ;   a1 - Channel to operate on
@@ -954,14 +944,16 @@ dVoiceReg	macro	offset, reg
 			moveq	#$FFFFFF00|\reg,d3; load register to d3
 		endif
 
+		or.b	d2,d3			; add channel offset to register
+		move.b	d3,(a5)+		; write register to buffer
+
 		if .offs>1
 			addq.w	#.offs-1,a4	; offset a4 by specific amount
 		endif
-			or.b	d2,d3		; add channel offset to register
-			move.b	d3,(a5)+	; write register to buffer
-		shift
+	shift
 	endr
     endm
+; ---------------------------------------------------------------------------
 
 dUpdateVoiceFM:
 		move.l	a2,-(sp)		; save the tracker address to stack
@@ -986,7 +978,7 @@ dUpdateVoiceFM:
 
 		move.b	(a4)+,d4		; load feedback and algorithm to d4
 		move.b	d4,(a5)+		; save it to free space
-		moveq	#$FFFFFFB0,d3		; YM command: Algorithm & FeedBack
+		moveq	#$FFFFFFB0,d3		; YM command: Algorithm & Feedback
 		or.b	d2,d3			; add channel offset to register
 		move.b	d3,(a5)+		; write register to buffer
 
@@ -996,6 +988,7 @@ dUpdateVoiceFM:
 	dVoiceReg	0, $70, $78, $74, $7C	; Decay 2 Rate
 	dVoiceReg	0, $80, $88, $84, $8C	; Decay 1 level, Release Rate
 	dVoiceReg	0, $90, $98, $94, $9C	; SSG-EG
+; ---------------------------------------------------------------------------
 
 		moveq	#4-1,d1			; prepare 4 operators to d1
 		move.b	cVolume(a1),d3		; load FM channel volume to d3
@@ -1027,7 +1020,19 @@ dUpdateVoiceFM:
 .uwdone
 	endif
 
-		lea	dOpTLFM(pc),a6		; restore old array
+	if FEATURE_SOUNDTEST
+		move.w	d3,d5			; copy to d5
+		cmp.w	#$7F,d5			; check if volume is out of range
+		bls.s	.nocapx			; if not, branch
+		spl	d5			; if positive (above $7F), set to $FF. Otherwise, set to $00
+		and.b	#$7F,d5			; keep in range for the sound test
+
+.nocapx
+		move.b	d5,cChipVol(a1)		; save volume to chip
+	endif
+; ---------------------------------------------------------------------------
+
+		lea	dOpTLFM(pc),a6		; load TL registers to a6
 
 .tlloop
 		move.b	(a4)+,d5		; get Total Level value from voice to d5
@@ -1053,7 +1058,7 @@ dUpdateVoiceFM:
 		jsr	dModulateTL(pc)		; do TL modulation on this channel
 	endif
 
-		cmp.w	#$80,d5			; check if volume is out of range
+		cmp.w	#$7F,d5			; check if volume is out of range
 		bls.s	.nocap			; if not, branch
 		spl	d5			; if positive (above $7F), set to $FF. Otherwise, set to $00
 
@@ -1071,6 +1076,7 @@ dUpdateVoiceFM:
 	if safe=1
 		AMPS_Debug_UpdVoiceFM		; check if the voice was valid
 	endif
+; ---------------------------------------------------------------------------
 
 		move.b	cPanning(a1),(a5)+	; copy panning value to free space
 		moveq	#$FFFFFFB4,d3		; YM command: Panning & LFO
@@ -1086,7 +1092,7 @@ dUpdateVoiceFM:
 	if safe=1
 		AMPS_Debug_CuePtr 0		; make sure cue is valid
 	endif
-	StopZ80					; wait for Z80 to stop
+	stopZ80					; wait for Z80 to stop
 
 .write
 	rept VoiceRegs+1
@@ -1096,7 +1102,7 @@ dUpdateVoiceFM:
 	endr
 
 	;	st	(a0)			; mark as end of the cue
-	StartZ80				; enable Z80 execution
+	startZ80				; enable Z80 execution
 		move.l	a5,sp			; fix stack pointer
 
 	if FEATURE_MODTL
@@ -1146,12 +1152,13 @@ dUpdateVoiceFM3:
 	endif
 		move.b	dUpdVcFM3tbl(pc,d2.w),d2; load the right offset from table
 
-		moveq	#$FFFFFFB0,d3		; YM command: Algorithm & FeedBack
+		moveq	#$FFFFFFB0,d3		; YM command: Algorithm & Feedback
 		or.b	d2,d3			; add channel offset to register
 		move.b	d3,(a5)+		; write register to buffer
 
 	dVoiceReg	4, $30, $50, $60	; Detune, Multiple - Rate Scale, Attack Rate - Decay 1 Rate
 	dVoiceReg	4, $70, $80, $90	; Decay 2 Rate - Decay 1 level, Release Rate - SSG-EG
+; ---------------------------------------------------------------------------
 
 	if FEATURE_MODTL
 		add.w	d1,d1			; double offset
@@ -1188,6 +1195,18 @@ dUpdateVoiceFM3:
 .uwdone
 	endif
 
+	if FEATURE_SOUNDTEST
+		move.w	d3,d5			; copy to d5
+		cmp.w	#$7F,d5			; check if volume is out of range
+		bls.s	.nocapx			; if not, branch
+		spl	d5			; if positive (above $7F), set to $FF. Otherwise, set to $00
+		and.b	#$7F,d5			; keep in range for the sound test
+
+.nocapx
+		move.b	d5,cChipVol(a1)		; save volume to chip
+	endif
+; ---------------------------------------------------------------------------
+
 		move.b	(a4)+,d5		; get Total Level value from voice to d5
 		ext.w	d5			; extend to word
 		bpl.s	.noslot			; if slot operator bit was not set, branch
@@ -1211,6 +1230,11 @@ dUpdateVoiceFM3:
 		jsr	dModulateTL(pc)		; do TL modulation on this channel
 	endif
 
+		cmp.w	#$7F,d5			; check if volume is out of range
+		bls.s	.nocap			; if not, branch
+		spl	d5			; if positive (above $7F), set to $FF. Otherwise, set to $00
+
+.nocap
 		move.b	d5,(a5)+		; save the Total Level value
 		moveq	#$40,d3			; load TL operator 1 value to d3
 		or.b	d2,d3			; add channel offset to register
@@ -1223,6 +1247,7 @@ dUpdateVoiceFM3:
 		add.w	d3,a4			; align voice
 		AMPS_Debug_UpdVoiceFM		; check if the voice was valid
 	endif
+; ---------------------------------------------------------------------------
 
 		move.b	mFM3op1+cPanning.w,(a5)+; copy panning value to free space
 		move.b	#$B4+2,(a5)+		; write register to buffer
@@ -1231,7 +1256,7 @@ dUpdateVoiceFM3:
 	if safe=1
 		AMPS_Debug_CuePtr 0		; make sure cue is valid
 	endif
-	StopZ80					; wait for Z80 to stop
+	stopZ80					; wait for Z80 to stop
 
 .write
 	rept VoiceRegsSM+1
@@ -1241,7 +1266,7 @@ dUpdateVoiceFM3:
 	endr
 
 	;	st	(a0)			; mark as end of the cue
-	StartZ80				; enable Z80 execution
+	startZ80				; enable Z80 execution
 
 		move.l	a5,sp			; fix stack pointer
 		bclr	#cfbVol,(a1)		; reset volume update request flag
@@ -1261,7 +1286,7 @@ dUpdateVoiceFM3:
 dcStop:
 		and.b	#$FF-(1<<mfbHold),mExtraFlags.w; clear note hold flag
 		and.b	#$FF-(1<<cfbRun),(a1)	; clear hold and running tracker flags
-	dStopChannel	-1			; stop channel operation (special mode)
+	dStopChannel	-1			; stop channel operation
 
 	if FEATURE_FM3SM
 		btst	#ctbFM3sm,cType(a1)	; is this FM3 in special mode?
@@ -1274,30 +1299,41 @@ dcStop:
 	endif
 
 		cmpa.w	#mSFXFM3,a1		; check if this is a SFX channel
-		blo.s	.exit			; if not, skip all this mess
-		clr.b	cPrio(a1)		; clear channel priority
+		bhs.s	.sfx			; if yes, run SFX code
 
+		btst	#ctbDAC,cType(a1)	; check if the channel is a DAC channel
+		beq.s	.nodac			; if not, skip
+		clr.b	cPanning(a1)		; clear panning (required for DAC to work right)
+
+.nodac
+		addq.l	#2,(sp)			; go to next channel immediately (this skips a bra.s instruction)
+		rts
+; ---------------------------------------------------------------------------
+
+.sfx
+		clr.b	cPrio(a1)		; clear channel priority
 		lea	dSFXoverList(pc),a4	; load quick reference to the SFX override list to a4
+
 		moveq	#0,d3
 		move.b	cType(a1),d3		; load channel type to d3
 		bmi.s	.psg			; if this is a PSG channel, branch
 		move.w	a1,-(sp)		; push channel pointer
 
 		and.w	#$07,d3			; get only the necessary bits to d3
-		subq.w	#2,d3			; since FM 1 and 2 are not used, skip over them
 		add.w	d3,d3			; double offset (each entry is 1 word in size)
-		move.w	(a4,d3.w),a1		; get the SFX channel we were overriding
+		move.w	-4(a4,d3.w),a1		; get the SFX channel we were overriding
 
 .nextfm3
 		tst.b	(a1)			; check if that channel is running a tracker
 		bpl.s	.fixch			; if not, branch
+; ---------------------------------------------------------------------------
 
 		bset	#cfbVol,(a1)		; set update volume flag (cleared by dUpdateVoiceFM)
-		bclr	#cfbInt,(a1)		; channel is not interrupted anymore
+		bclr	#cfbInt,(a1)		; reset sfx override flag
 		btst	#ctbDAC,cType(a1)	; check if the channel is a DAC channel
 		bne.s	.fixch			; if yes, skip
 
-		bset	#cfbRest,(a1)		; set channel resting
+		bset	#cfbRest,(a1)		; set channel resting flag
 		moveq	#0,d4
 		move.b	cVoice(a1),d4		; load FM voice ID of the channel to d4
 		jsr	dUpdateVoiceFM(pc)	; send FM voice for this channel
@@ -1308,12 +1344,13 @@ dcStop:
 		add.w	#cSize,a1		; go to next operator
 		bra.s	.nextfm3		; enable it too!
 	endif
+; ---------------------------------------------------------------------------
 
 .fixch
 		move.w	(sp)+,a1		; pop the current channel
 
 .exit
-		addq.l	#2,(sp)			; go to next channel immediately
+		addq.l	#2,(sp)			; go to next channel immediately (this skips a bra.s instruction)
 		rts
 ; ---------------------------------------------------------------------------
 
@@ -1358,11 +1395,11 @@ dcStop:
 
 .unintpsg
 		bclr	#cfbInt,(a4)		; channel is not interrupted anymore
-		bset	#cfbRest,(a4)		; set channel resting
+		bset	#cfbRest,(a4)		; reset sfx override flag
 
 		cmp.b	#ctPSG4,cType(a4)	; check if this channel is in PSG4 mode
 		bne.s	.exit			; if not, skip
-		move.b	cStatPSG4(a4),dPSG.l	; update PSG4 status to PSG port
+		move.b	cStatPSG4(a4),dPSG	; update PSG4 status to PSG port
 		bra.s	.exit
 ; ---------------------------------------------------------------------------
 
@@ -1420,11 +1457,12 @@ dcsLFO:
 
 	InitChYM				; prepare to write Channel-specific YM registers
 	stopZ80
-	WriteChYM	#$6C, (a5)+		; Decay 1 level: Decay 1 + AMS enable bit for operator 4
-	WriteChYM	#$64, (a5)+		; Decay 1 level: Decay 1 + AMS enable bit for operator 2
-	WriteChYM	#$68, (a5)+		; Decay 1 level: Decay 1 + AMS enable bit for operator 3
+	WriteChYM	#$6C, (a5)+		; Decay 4 level: Decay 4 + AMS enable bit for operator 4
+	WriteChYM	#$64, (a5)+		; Decay 2 level: Decay 2 + AMS enable bit for operator 2
+	WriteChYM	#$68, (a5)+		; Decay 3 level: Decay 3 + AMS enable bit for operator 3
 	WriteChYM	#$60, (a5)+		; Decay 1 level: Decay 1 + AMS enable bit for operator 1
 		bra.s	.cont
+; ---------------------------------------------------------------------------
 
 .skipLFO
 	InitChYM				; prepare to write Channel-specific YM registers
@@ -1441,17 +1479,17 @@ dcsLFO:
 
 		btst	#cfbInt,(a1)		; check if channel is interrupted
 		bne.s	.skipPan		; if so, skip panning
-	WriteYM1	#$B4+2, d3		; Panning & LFO: FM3, AMS + FMS + Panning
+	WriteYM1	#$B6, d3		; Panning & LFO: FM3, AMS + FMS + Panning
 
 	;	st	(a0)			; write end marker
 	startZ80
 		move.l	a5,sp			; restore stack pointer
 		rts
 	endif
+; ---------------------------------------------------------------------------
 
 .nosm
 		move.b	d3,cPanning(a1)		; save to channel panning
-
 		btst	#cfbInt,(a1)		; check if channel is interrupted
 		bne.s	.skipPan		; if so, skip panning
 	WriteChYM	#$B4, d3		; Panning & LFO: AMS + FMS + Panning
@@ -1515,28 +1553,28 @@ dcCSMOff:
 ; ---------------------------------------------------------------------------
 
 tlmodrt		macro update, name
-\name\1:
+\name\_1:
 	if \update<>0
 		pea	dcUpdateTL(pc)		; update TL modulation flags last
 	endif
 		move.l	a6,a1			; just copy the pointer to a1
 		bra.s	\name\_Normal
 
-\name\2:
+\name\_2:
 	if \update<>0
 		pea	dcUpdateTL(pc)		; update TL modulation flags last
 	endif
 		lea	toSize(a6),a1		; copy pointer for operator 2 to a1
 		bra.s	\name\_Normal
 
-\name\3:
+\name\_3:
 	if \update<>0
 		pea	dcUpdateTL(pc)		; update TL modulation flags last
 	endif
 		lea	toSize*2(a6),a1		; copy pointer for operator 3 to a1
 		bra.s	\name\_Normal
 
-\name\4:
+\name\_4:
 	if \update<>0
 		pea	dcUpdateTL(pc)		; update TL modulation flags last
 	endif
@@ -1557,8 +1595,8 @@ tlmodrt		macro update, name
 		lsr.b	#1,d3			; halve it
 		move.b	d3,toModCount(a4)	; save as modulation step count to channel
 
-		move.b	(a2)+,toModDelay(a4)	; load modulation delay from tracker to channel
 		move.b	(a2)+,toModStep(a4)	; load modulation step offset from tracker to channel
+		move.b	(a2)+,toModDelay(a4)	; load modulation delay from tracker to channel
 		bra.s	dcModOnTL_Normal	; continue to enable modulation
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -1673,12 +1711,12 @@ dcUpdateTL:
 		rts
 ; ---------------------------------------------------------------------------
 
-dcComplexTable:
 dccte		macro extra, first, second
 	dc.w *-\first, *-\second
 	dc.b \extra, 0, \extra, 0
     endm
 
+dcComplexTable:
 	dccte	0, dcResetVolEnvTL, dcModOnTL_Normal	; %0000: Setup modulation and reset volume envelope
 	dccte	0, dcModOnTL_Normal, dcComplexRts	; %0001: Setup modulation
 	dccte	1, dcVolEnvTL_Normal, dcComplexRts	; %0010: Setup volume envelope
@@ -1722,7 +1760,7 @@ dcsComm:
 
 dcCondRegTable:
 	dc.w ConsoleRegion, mFlags	; 0
-	dc.w 0, 0			; 2
+	dc.w mTempo, mSpeed		; 2
 	dc.w 0, 0			; 4
 	dc.w 0, 0			; 6
 	dc.w 0, 0			; 8
@@ -1757,6 +1795,7 @@ dcCondJump	macro x
 	\x	.false
 	rts
      endm
+; ---------------------------------------------------------------------------
 
 dcCond:
 		lea	mComm.w,a4		; get communications array to a4
@@ -1778,6 +1817,7 @@ dcCondCom:
 
 .false
 		bset	#cfbCond,(a1)		; set condition to false
+; ---------------------------------------------------------------------------
 
 .cond
 	rts			; T
@@ -1799,20 +1839,20 @@ dcCondCom:
 	dcCondJump bgt.s	; LE
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Tracker command for freezing the CPU. DEBUG FLAG
+; Tracker debug command for freezing the CPU
 ; ---------------------------------------------------------------------------
 
 	if safe=1
 dcFreeze:
-		bra.w	*		; Freeze CPU here
+		bra.w	*			; trap CPU here
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Tracker command for debugging tracker data. DEBUG FLAG
+; Tracker debug command for debugging tracker data
 ; ---------------------------------------------------------------------------
 
 dcTracker:
-		st	msChktracker.w	; set debug flag
+		st	msChktracker.w		; set debug flag
 		rts
 	endif
 ; ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 GotThrough_Header:
 	sHeaderInit
-	sHeaderTempo	$0055
+	sHeaderTempo	$00, $AA
 	sHeaderCh	$05, $02
 	sHeaderDAC	GotThrough_DAC1
 	sHeaderDAC	GotThrough_DAC2

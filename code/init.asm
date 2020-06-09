@@ -35,6 +35,7 @@ WaitForZ80:
 		btst	d0,(a1)		; has the Z80 stopped?
 		bne.s	WaitForZ80	; if not, branch
 		moveq	#endinit-initz80-1,d2
+
 Z80InitLoop:
 		move.b	(a5)+,(a0)+
 		dbf	d2,Z80InitLoop
@@ -96,15 +97,17 @@ SetupValues:	dc.w $8000		; XREF: PortA_Ok
 
 		dc.l $40000080
 
+zchkoffs =	0
 initz80	z80prog 0
-
 		di
+		im	1
 		ld	hl,YM_Buffer1			; we need to clear from YM_Buffer1
 		ld	de,(YM_BufferEnd-YM_Buffer1)/8	; to end of Z80 RAM, setting it to 0FFh
 
 	.loop:
+		ld	a,0FFh				; prepare FF to a
 		rept 8
-			dec	(hl)			; set address to 0FFh
+			ld	(hl),a			; set address to 0FFh
 			inc	hl			; go to next address
 		endr
 
@@ -116,6 +119,8 @@ initz80	z80prog 0
 	z80prog
 		even
 endinit
+zchkoffs =	1
+
 		dc.w $8174			; value	for VDP	display	mode
 		dc.w $8F02			; value	for VDP	increment
 		dc.l $C0000000			; value	for CRAM write mode

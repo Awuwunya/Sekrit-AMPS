@@ -31,6 +31,7 @@ dModEnvProg:
 
 		moveq	#0,d4
 		moveq	#0,d5
+; ---------------------------------------------------------------------------
 
 dModEnvProg2:
 		move.b	cModEnvPos(a1),d5	; get envelope position to d5
@@ -45,7 +46,7 @@ dModEnvProg2:
 		btst	#cfbFreqFrz,(a1)	; check if frequency is frozen
 		bne.s	locret_ModEnvProg	; if yes, skip this shiz
 
-		move.b	cModEnvSens(a1),d5	; load sensitivity to d1 (unsigned value - effective range is ~ -$7000 to $8000)
+		move.b	cModEnvSens(a1),d5	; load sensitivity to d5 (unsigned value - effective range is ~ -$7000 to $8000)
 		addq.w	#1,d5			; increment sensitivity by 1 (range of 1 to $100)
 		ext.w	d4			; extend to displacement to a word
 		muls	d5,d4			; signed multiply loaded value with sensitivity
@@ -99,7 +100,8 @@ dModEnvCommand:
 		add.b	d4,cModEnvSens(a1)	; add to modulation envelope sensitivity
 ; ---------------------------------------------------------------------------
 
-.ignore		addq.b	#2,cModEnvPos(a1)	; skip the command and the next byte
+.ignore
+		addq.b	#2,cModEnvPos(a1)	; skip the command and the next byte
 		jmp	dModEnvProg2(pc)	; run the program again
 ; ---------------------------------------------------------------------------
 
@@ -134,6 +136,7 @@ dVolEnvProg:
 
 		move.l	(a2,d4.w),a2		; get pointer to volume envelope data
 		moveq	#0,d4
+; ---------------------------------------------------------------------------
 
 dVolEnvProg2:
 		move.b	cEnvPos(a1),d4		; get envelope position to d4
@@ -458,3 +461,4 @@ dPhaseTableADSR:
 		dc.b adpSustain|admImm, adpSustain|admImm, adpRelease|admImm, adpSustain|admImm
 ; ---------------------------------------------------------------------------
 	endif
+

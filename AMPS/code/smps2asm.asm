@@ -1,9 +1,7 @@
-; ---------------------------------------------------------------------------------------------
-; AMPS - SMPS2ASM macro & equate file.
-;
-; Based on Flamewing's SMPS2ASM, and S1SMPS2ASM by Marc (AKA Cinossu)
-; Reworked and improved by Natsumi
-; ---------------------------------------------------------------------------------------------
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; AMPS - SMPS2ASM macro & equate file
+; ---------------------------------------------------------------------------
 
 ; this macro is created to emulate enum in AS
 enum		macro lable
@@ -13,9 +11,10 @@ _num =		_num+1
 	shift
 	endr
     endm
-; ---------------------------------------------------------------------------------------------
-; Note Equates
-; ---------------------------------------------------------------------------------------------
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Note equates
+; ---------------------------------------------------------------------------
 
 _num =		$80
 	enum nRst
@@ -27,10 +26,11 @@ _num =		$80
 	enum nC5,nCs5,nD5,nEb5,nE5,nF5,nFs5,nG5,nAb5,nA5,nBb5,nB5
 	enum nC6,nCs6,nD6,nEb6,nE6,nF6,nFs6,nG6,nAb6,nA6,nBb6,nB6
 	enum nC7,nCs7,nD7,nEb7,nE7,nF7,nFs7,nG7,nAb7,nA7,nBb7
-nHiHat =	nA6
-; ---------------------------------------------------------------------------------------------
+nHiHat =	nBb6
+; ===========================================================================
+; ---------------------------------------------------------------------------
 ; Note Equates for PSG4
-; ---------------------------------------------------------------------------------------------
+; ---------------------------------------------------------------------------
 
 		rsset nRst
 		rs.w 1		; rest channel
@@ -42,10 +42,11 @@ nWhite10	rs.w 1		; white noise at pitch $10
 nWhite20	rs.w 1		; white noise at pitch $20
 nWhite40	rs.w 1		; white noise at pitch $40
 nWhitePSG3	rs.w 1		; white noise with pitch from PSG3
-n4Last		rs.w 0		; used for safe mode
-; ---------------------------------------------------------------------------------------------
-; Header Macros
-; ---------------------------------------------------------------------------------------------
+n4Last =	__rs 0		; used for safe mode
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Header macros
+; ---------------------------------------------------------------------------
 
 ; Header - Initialize a music file
 sHeaderInit	macro
@@ -57,47 +58,39 @@ sHeaderInitSFX	macro
 
     endm
 
-; Header - Set up Channel Usage
-sHeaderCh	macro fmc,psgc
-	if narg=2
-		dc.b \psgc-1, \fmc-1
-		if \fmc>Mus_HeadFM
-			inform 1,"You sure there are so many fm FM channels?"
+; Header - Set up channel usage
+sHeaderCh	macro fm,psg
+	if narg>1
+		dc.b \psg-1, \fm-1
+		if \fm>Mus_HeadFM
+			inform 1,"You sure there are \fm FM channels?"
 		endif
 
-		if \psgc>Mus_PSG
-			inform 1,"You sure there are so many psg PSG channels?"
+		if \psg>Mus_PSG
+			inform 1,"You sure there are \psg PSG channels?"
 		endif
 	else
-		dc.b \fmc-1
+		dc.b \fm-1
 	endif
     endm
 
-; Header - Set up Tempo
-sHeaderTempo	macro tempo
-	dc.w \tempo
-
-	if narg<>1
-		inform 2,"Wrong number of arguments for sHeaderTempo!"
-	endif
-
-	if (\tempo&$0FFF)>$300
-		inform 1,"It is dangerious to use tempos >$300!"
-	endif
+; Header - Set up tempo and flags
+sHeaderTempo	macro flags,tempo
+	dc.b \flags,\tempo
     endm
 
-; Header - Set priority leve
+; Header - Set priority level
 sHeaderPrio	macro prio
 	dc.b \prio
     endm
 
-; Header - Set up DAC Channel
+; Header - Set up a DAC channel
 sHeaderDAC	macro loc,vol,samp
 	dc.w \loc-*
 
-	if narg>=2
-		dc.b \vol
-		if narg>=3
+	if narg>1
+		dc.b (\vol)&$FF
+		if narg>2
 			dc.b \samp
 		else
 			dc.b $00
@@ -107,26 +100,28 @@ sHeaderDAC	macro loc,vol,samp
 	endif
     endm
 
-; Header - Set up FM Channel
+; Header - Set up an FM channel
 sHeaderFM	macro loc,pitch,vol
 	dc.w \loc-*
 	dc.b (\pitch)&$FF,(\vol)&$FF
     endm
 
-; Header - Set up PSG Channel
+; Header - Set up a PSG channel
 sHeaderPSG	macro loc,pitch,vol,detune,volenv
 	dc.w \loc-*
 	dc.b (\pitch)&$FF,(\vol)&$FF,(\detune)&$FF,\volenv
     endm
 
-; Header - Set up SFX Channel
+; Header - Set up an SFX channel
 sHeaderSFX	macro flags,type,loc,pitch,vol
-	dc.b \flags,\type,(\pitch)&$FF,(\vol)&$FF
+	dc.b \flags,\type
 	dc.w \loc-*
+	dc.b (\pitch)&$FF,(\vol)&$FF
     endm
-; ---------------------------------------------------------------------------------------------
+; ===========================================================================
+; ---------------------------------------------------------------------------
 ; Macros for PSG instruments
-; ---------------------------------------------------------------------------------------------
+; ---------------------------------------------------------------------------
 
 ; Patches - ADSR data
 ;   mode -> sets the flags used for ADSR. Bit7 is always set.
@@ -137,29 +132,29 @@ sHeaderSFX	macro flags,type,loc,pitch,vol
 ;   releasedelta -> How fast to release. 2.6 fixed point format
 
 spADSR		macro name, mode, atkvol, atkdelta, decayvol, decaydelta, releasedelta
-a\name =	sPatNum
+a\name equ	sPatNum
 sPatNum =	sPatNum+1
 
 	dc.b \mode, 0
 	dc.b \atkdelta, \atkvol, \decaydelta, \decayvol, \releasedelta
 	dc.b 0
     endm
-; ---------------------------------------------------------------------------------------------
+; ===========================================================================
+; ---------------------------------------------------------------------------
 ; Macros for FM instruments
-; Patches - Feedback
-; ---------------------------------------------------------------------------------------------
+; ---------------------------------------------------------------------------
 
-; Patches - Algorithm
+; Patches - Algorithm and patch name
 spAlgorithm	macro val, name
 	if (sPatNum<>0)&(safe=0)
 		; align the patch
-		dc.b (*^(sPatNum*spTL4))&$FF
-		dc.b ((*>>8)+(spDe3*spDR3))&$FF
-		dc.b ((*>>16)-(spTL1*spRR3))&$FF
+		dc.b ((*)^(sPatNum*spTL4))&$FF
+		dc.b (((*)>>8)+(spDe3*spDR3))&$FF
+		dc.b (((*)>>16)-(spTL1*spRR3))&$FF
 	endif
 
 	if narg>1
-p\name =	sPatNum
+p\name =		sPatNum
 	endif
 
 sPatNum =	sPatNum+1
@@ -244,7 +239,7 @@ spRR4 =		\op4
     endm
 
 ; Patches - SSG-EG
-spSSGEG	macro op1,op2,op3,op4
+spSSGEG		macro op1,op2,op3,op4
 spSS1 =		\op1
 spSS2 =		\op2
 spSS3 =		\op3
@@ -278,12 +273,12 @@ spTLMask1 =	((spAl=7)<<7)
 	dc.b spTL1|spTLMask1,  spTL3|spTLMask3,  spTL2|spTLMask2,  spTL4|spTLMask4
 
 	if safe=1
-		dc.b 'NAT'	; align the patch
+		dc.b "NAT"	; align the patch
 	endif
     endm
 
 ; Patches - Total Level (for broken total level masks)
-spTotalLv2 macro op1,op2,op3,op4
+spTotalLv2	macro op1,op2,op3,op4
 spTL1 =		\op1
 spTL2 =		\op2
 spTL3 =		\op3
@@ -299,21 +294,23 @@ spTL4 =		\op4
 	dc.b spTL1,	       spTL3,		 spTL2,		   spTL4
 
 	if safe=1
-		dc.b 'NAT'	; align the patch
+		dc.b "NAT"	; align the patch
 	endif
     endm
-; ---------------------------------------------------------------------------------------------
-; Command Flag Macros and Equates. Based on the original s1smps2asm, and Flamewing's smps2asm
-; ---------------------------------------------------------------------------------------------
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Equates for sPan
+; ---------------------------------------------------------------------------
 
-spNone =	$00
-spRight =	$40
-spLeft =	$80
-spCentre =	$C0
-spCenter =	$C0
-; ---------------------------------------------------------------------------------------------
-; tracker commands
-; ---------------------------------------------------------------------------------------------
+spNone equ	$00
+spRight equ	$40
+spLeft equ	$80
+spCentre equ	$C0
+spCenter equ	$C0
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Tracker commands
+; ---------------------------------------------------------------------------
 
 ; E0xx - Panning, AMS, FMS (PANAFMS - PAFMS_PAN)
 sPan		macro pan, ams, fms
@@ -349,10 +346,10 @@ saTranspose	macro transp
     endm
 
 ; E6 - Freeze frequency for the next note (FREQ_FREEZE)
-sFqFz =		$E6
+sFqFz equ		$E6
 
 ; E7 - Do not attack of next note (HOLD)
-sHold =		$E7
+sHold equ		$E7
 
 ; E8xx - Set patch/voice/sample to xx (INSTRUMENT - INS_C_FM / INS_C_PSG / INS_C_DAC)
 sVoice		macro voice
@@ -369,16 +366,14 @@ sModEnv		macro env
 	dc.b $F3, \env
     endm
 
-; E9xxxx - Set music speed shoes tempo to xx (TEMPO - TEMPO_SET_SPEED)
+; E9xx - Set music speed shoes tempo to xx (TEMPO - TEMPO_SET_SPEED)
 ssTempoShoes	macro tempo
-	dc.b $E9
-	dc.w \tempo
+	dc.b $E9, \tempo
     endm
 
-; EAxxxx - Set music tempo to xx (TEMPO - TEMPO_SET)
+; EAxx - Set music tempo to xx (TEMPO - TEMPO_SET)
 ssTempo		macro tempo
-	dc.b $EA
-	dc.w \tempo
+	dc.b $EA, \tempo
     endm
 
 ; FF18xx - Add xx to music speed tempo (TEMPO - TEMPO_ADD_SPEED)
@@ -432,20 +427,11 @@ ssLFO		macro reg, ams, fms, pan
 ; (MOD_SETUP)
 sModAMPS	macro wait, speed, step, count
 	dc.b $F0
-	sModData \wait,\speed,\step,\count
+	sModData \wait, \speed, \step, \count
     endm
 
 sModData	macro wait, speed, step, count
-	dc.b \speed, \count, \wait, \step
-
-	if speed=0
-		inform 1,"Modulation speed is 0! This is not valid for modulation and will instead disable it."
-	endif
-    endm
-
-; F1xx - Set portamento speed to xx frames. 0 means portamento is disabled (PORTAMENTO)
-ssPortamento	macro frames
-	dc.b $F1, \frames
+	dc.b \speed, \count, \step, \wait
     endm
 
 ; FF00 - Turn on Modulation (MOD_SET - MODS_ON)
@@ -456,6 +442,28 @@ sModOn		macro
 ; FF04 - Turn off Modulation (MOD_SET - MODS_OFF)
 sModOff		macro
 	dc.b $FF,$04
+    endm
+
+; FF28xxxx - Set modulation frequency to xxxx (MOD_SET - MODS_FREQ)
+ssModFreq	macro freq
+	dc.b $FF,$28
+	dc.w \freq
+    endm
+
+; FF2C - Reset modulation data (MOD_SET - MODS_RESET)
+sModReset	macro
+	dc.b $FF,$2C
+    endm
+
+; F1xx - Set portamento speed to xx frames. 0 means portamento is disabled (PORTAMENTO)
+ssPortamento	macro frames
+	dc.b $F1, \frames
+    endm
+
+; F4xxxx - Keep looping back to xxxx each time the SFX is being played (CONT_SFX)
+sCont		macro loc
+	dc.b $FF,$4C
+	dc.w \loc-*-2
     endm
 
 ; F5 - End of channel (TRK_END - TEND_STD)
@@ -547,17 +555,6 @@ sPlayMus	macro id
 	dc.b $FF,$24, \id
     endm
 
-; FF28xx - Set ADSR mode to xx (ADSR - ADSR_MODE)
-ssModeADSR	macro mode
-	dc.b $FF,$28, \mode
-    endm
-
-; FF2Cxxxx - Keep looping back to xxxx each time the SFX is being played (CONT_SFX)
-sCont		macro loc
-	dc.b $FF,$2C
-	dc.w \loc-*-2
-    endm
-
 ; FF30xxxxyyyyzzzz - Enable FM3 special mode (SPC_FM3)
 sSpecFM3	macro op2, op3, op4
 	dc.b $FF,$30
@@ -565,9 +562,9 @@ sSpecFM3	macro op2, op3, op4
 	if narg=0
 		dc.w 0
 	else
-		dc.w \op3-offset(*)-2
-		dc.w \op2-offset(*)-2
-		dc.w \op4-offset(*)-2
+		dc.w \op3-*-2
+		dc.w \op2-*-2
+		dc.w \op4-*-2
 	endif
     endm
 
@@ -594,6 +591,25 @@ sCSMOn		macro ops, timera
 ; FF44yy - Disable CSM mode and set register mask y (SPC_FM3 - CSM_OFF)
 sCSMOff		macro ops
 	dc.b $FF,$44, (\ops&$F0)|ctFM3
+    endm
+
+; FF28xx - Set ADSR mode to xx (ADSR - ADSR_MODE)
+ssModeADSR	macro mode
+	dc.b $FF,$48, \mode
+    endm
+
+; FF40 - Freeze 68k. Debug flag (DEBUG_STOP_CPU)
+sFreeze		macro
+	if safe=1
+		dc.b $FF,$40
+	endif
+    endm
+
+; FF44 - Bring up tracker debugger at end of frame. Debug flag (DEBUG_PRINT_TRACKER)
+sCheck		macro
+	if safe=1
+		dc.b $FF,$44
+	endif
     endm
 
 ; F4xx -  Setup TL modulation for all operators according to parameter value (TL_MOD - MOD_COMPLEX)
@@ -677,7 +693,7 @@ sModOnTL	macro op
 
 ; FF6x - Turn off TL Modulation for operator x (TL_MOD - MODS_OFF)
 sModOffTL	macro op
-	dc.b $FF, $60|((\op-1)*4)
+	dc.b $FF, $60|(\op-1)*4)
     endm
 
 ; FF7uwwxxyyzz - TL Modulation for operator u
@@ -705,25 +721,13 @@ saVolTL		macro op, val
 ssVolTL		macro op, val
 	dc.b $FF, $A0|((\op-1)*4), \val
     endm
-
-; FFB0 - Freeze 68k. Debug flag (DEBUG_STOP_CPU)
-sFreeze		macro
-	if safe=1
-		dc.b $FF,$B0
-	endif
-    endm
-
-; FFB4 - Bring up tracker debugger at end of frame. Debug flag (DEBUG_PRINT_TRACKER)
-sCheck		macro
-	if safe=1
-		dc.b $FF,$B4
-	endif
-    endm
-; ---------------------------------------------------------------------------------------------
-; equates for sNoisePSG
-; ---------------------------------------------------------------------------------------------
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Equates for sNoisePSG
+; ---------------------------------------------------------------------------
 
 snOff =		$00			; disables PSG3 noise mode.
 _num =		$E0
 	enum snPeri10, snPeri20, snPeri40, snPeriPSG3
 	enum snWhite10,snWhite20,snWhite40,snWhitePSG3
+; ---------------------------------------------------------------------------

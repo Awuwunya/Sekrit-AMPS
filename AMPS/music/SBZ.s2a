@@ -1,6 +1,6 @@
 ScrabBrain_Header:
 	sHeaderInit
-	sHeaderTempo	$0066
+	sHeaderTempo	$00, $9A
 	sHeaderCh	$05, $03
 	sHeaderDAC	ScrabBrain_DAC1
 	sHeaderDAC	ScrabBrain_DAC2

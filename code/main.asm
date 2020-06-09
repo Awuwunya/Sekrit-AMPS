@@ -6,8 +6,8 @@ Z80_Space =	$2000		; The amount of space reserved for Z80 driver. The compressor
 	include "AMPS/code/smps2asm.asm"
 	include "AMPS/code/macro.asm"
 	include "AMPS/lang.asm"
-
 ; ===========================================================================
+
 StartOfRom:	dc.l Stack, EntryPoint, BusError, AddressError
 		dc.l IllegalInstr, ZeroDivide, ChkInstr, TrapvInstr
 		dc.l PrivilegeViol, Trace, Line1010Emu, Line1111Emu
@@ -67,7 +67,7 @@ DualPCM_sz:	z80prog					; end z80 program
 
 		PUSHS					; store section information for Main
 mergecode	SECTION	file("AMPS/.z80.dat"), org(0)	; create settings file for storing info about how to merge things
-		dc.l offset(DualPCM), ($10000-*)	; store info about location of file and size available
+		dc.l offset(DualPCM), Z80_Space		; store info about location of file and size available
 
 	if zchkoffs
 		rept zfuturec

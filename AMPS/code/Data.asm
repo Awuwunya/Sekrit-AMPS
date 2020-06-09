@@ -2,9 +2,9 @@
 ; ---------------------------------------------------------------------------
 ; Flags section. None of this is required, but I added it here to
 ; make it easier to debug built ROMS! If you would like easier
-; assistance from Natsumi, please keep this section intact!
+; assistance from Aurora, please keep this section intact!
 ; ---------------------------------------------------------------------------
-	dc.b "AMPS-x1.2"		; ident str
+	dc.b "AMPS-x2.1"		; ident str
 
 	if safe
 		dc.b "s"		; safe mode enabled
@@ -60,6 +60,10 @@
 	if FEATURE_FM3SM
 		dc.b "S3"		; FM3 special mode
 	endif
+
+	if FEATURE_SOUNDTEST
+		dc.b "ST"		; soundtest enabled
+	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Define music and SFX
@@ -73,14 +77,15 @@
 __mus =		MusOff
 
 MusicIndex:
-	ptrMusic GHZ, $25, LZ, $02, MZ, $02, SLZ, $07, SYZ, $0C, SBZ, $20, FZ, $10
-	ptrMusic Boss, $2E, SS, $00, Invincibility, $01, Drowning, $80
-	ptrMusic Title, $00, GotThroughAct, $00, Emerald, $00, ExtraLife, $33
+	ptrMusic GHZ, $30, LZ, $26, MZ, $1A, SLZ, $20, SYZ, $49, SBZ, $13, FZ, $18
+	ptrMusic Boss, $12, SS, $20, Invincibility, $20, Drowning, $00
+	ptrMusic Title, $00, GotThroughAct, $00, Emerald, $00, ExtraLife, $00
 	ptrMusic GameOver, $00, Continue, $00, Ending, $00, Credits, $00, SEGA, $00
 
 MusCount =	__mus-MusOff		; number of installed music tracks
 SFXoff =	__mus			; first SFX ID
 __sfx =		SFXoff
+; ---------------------------------------------------------------------------
 
 SoundIndex:
 	ptrSFX	$01, RingRight
@@ -91,6 +96,7 @@ SoundIndex:
 	ptrSFX	0, Explode, Electricity, Flame, LavaBall, SpikeMove
 	ptrSFX	0, Rumble, Door, Chain, Saw, Lava
 	ptrSFX	$20, Bubble, Drown, AirDing, Dash, Signpost, Stomp
+
 	ptrSFX	0, EnterSS, Goal, ActionBlock, Diamonds, Continue
 
 ; SFX with special features
@@ -123,6 +129,7 @@ SampleList:
 
 vNone =		$00
 __venv =	$01
+
 VolEnvs:
 	volenv 01, 02, 03, 04, 05, 06, 07, 08
 	volenv 09
@@ -196,6 +203,9 @@ ModEnvs_End:
 sfxaddr	incSFX				; include all sfx
 musaddr	incMus				; include all music
 musend
+
+dSoundNames:
+;	allnames			; include all sound names in an array
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Include samples and filters
@@ -205,11 +215,12 @@ musend
 fLog:		incbin "AMPS/filters/Logarithmic.dat"	; logarithmic filter (no filter)
 ;fLinear:	incbin "AMPS/filters/Linear.dat"	; linear filter (no filter)
 
-dacaddr		dcb.b	Z80E_Read*(MaxPitch/$100),$00
-SWF_Stop:	dcb.b	$8000-(2*Z80E_Read*(MaxPitch/$100)),$80
-SWFR_Stop:	dcb.b	Z80E_Read*(MaxPitch/$100),$00
+dacaddr		dcb.b Z80E_Read*(MaxPitch/$100),$00
+SWF_Stop:	dcb.b $8000-(2*Z80E_Read*(MaxPitch/$100)),$80
+SWFR_Stop:	dcb.b Z80E_Read*(MaxPitch/$100),$00
+; ---------------------------------------------------------------------------
 
 	incSWF	Kick, Timpani, Snare, Sega
 	opt ae+				; enable automatic evens
 	list				; continue source listing
-; ===========================================================================
+; ---------------------------------------------------------------------------

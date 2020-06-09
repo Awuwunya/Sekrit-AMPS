@@ -1,6 +1,6 @@
 Continue_Header:
 	sHeaderInit
-	sHeaderTempo	$00DB
+	sHeaderTempo	$00, $25
 	sHeaderCh	$04, $00
 	sHeaderDAC	Continue_DAC1
 	sHeaderDAC	Continue_DAC2

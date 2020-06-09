@@ -1,6 +1,6 @@
 Marble_Header:
 	sHeaderInit
-	sHeaderTempo	$0072
+	sHeaderTempo	$00, $8E
 	sHeaderCh	$05, $03
 	sHeaderDAC	Marble_DAC1, $00, $00
 	sHeaderDAC	Marble_DAC2, $00, $00

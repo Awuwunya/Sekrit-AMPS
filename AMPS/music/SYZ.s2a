@@ -1,6 +1,6 @@
 SpringYard_Header:
 	sHeaderInit
-	sHeaderTempo	$0055
+	sHeaderTempo	$00, $AA
 	sHeaderCh	$05, $03
 	sHeaderDAC	SpringYard_DAC1
 	sHeaderDAC	SpringYard_DAC2
@@ -311,7 +311,6 @@ SpringYard_Call8:
 	sRet
 
 SpringYard_Call9:
-;	ssTickMulCh	$01
 	dc.b nBb3, $01, sHold, nA3, $04, nRst, $07, nBb3
 	dc.b $01, sHold, nA3, $04, nRst, $07, nC4, $01
 	dc.b sHold, nB3, $04, nRst, $07, nC4, $01, sHold
@@ -319,7 +318,6 @@ SpringYard_Call9:
 	dc.b $04, nRst, $07, nCs4, $01, sHold, nC4, $04
 	dc.b nRst, $07, nD4, $01, sHold, nCs4, $04, nRst
 	dc.b $07, nD4, $01, sHold, nCs4, $04, nRst, $07
-;	ssTickMulCh	$02
 	sRet
 
 SpringYard_FM5:
@@ -330,10 +328,8 @@ SpringYard_FM5:
 	sJump		SpringYard_Jump3
 
 SpringYard_PSG1:
-;	ssTickMulCh	$01
 	sCall		Credits_Call18x	; fuck it (oh btw this will break if you remove credits fuck you)
 	dc.b $04			; needs moar delay
-;	ssTickMulCh	$02
 
 SpringYard_Jump4:
 	sCall		SpringYard_Call10

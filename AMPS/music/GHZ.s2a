@@ -1,6 +1,6 @@
 GreenHill_Header:
 	sHeaderInit
-	sHeaderTempo	$00AB
+	sHeaderTempo	$00, $55
 	sHeaderCh	$05, $03
 	sHeaderDAC	GreenHill_DAC1, $00, $00
 	sHeaderDAC	GreenHill_DAC2, $00, $00

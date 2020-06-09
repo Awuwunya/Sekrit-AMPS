@@ -1,5 +1,5 @@
 	sHeaderInit
-	sHeaderTempo	$0100
+	sHeaderTempo	$01, $00
 	sHeaderCh	$00, $00
 	sHeaderDAC	.DAC1, $00, $00
 	sHeaderDAC	.DAC2, $00, dSega

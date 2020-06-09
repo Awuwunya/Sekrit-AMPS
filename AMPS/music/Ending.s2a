@@ -1,6 +1,6 @@
 Ending_Header:
 	sHeaderInit
-	sHeaderTempo	$80CD
+	sHeaderTempo	$80, $33
 	sHeaderCh	$05, $03
 	sHeaderDAC	Ending_DAC1
 	sHeaderDAC	Ending_DAC2

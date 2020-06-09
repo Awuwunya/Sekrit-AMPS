@@ -30,7 +30,7 @@ DrawScene:
 		bsr.w	.writeb			; write music selection
 
 	vdpCoord 8,2,WRITE
-		moveq	#4-1,d2			; set rept count
+		moveq	#1-1,d2			; set rept count
 		bsr.w	.writeb			; write tempo data
 
 	vdpCoord 8,3,WRITE
@@ -64,23 +64,8 @@ DrawScene:
 		move.w	(a1)+,d3		; get value as a word
 		rts
 
-.modf		moveq	#4-1,d6			; digit ct
-		move.w	(a0)+,a1		; get actual addr
-		move.b	cDetune(a1),d3		; get detune
-		ext.w	d3			; extend to word
-		add.w	cFreq(a1),d3		; add frequency
-
-	if FEATURE_MODULATION
-		add.w	cModFreq(a1),d3		; add modulation frequency
-	endif
-
-	if FEATURE_PORTAMENTO
-		add.w	cPortaFreq(a1),d3	; add portamento frequency offset
-	endif
-		rts
-
 .list	dc.w MusSel, MusPlay
-	dc.w 0, mTempo, 0, mTempoMain, 0, mTempoSpeed, mTempoAcc+1
+	dc.w 0, mTempo
 	dc.w mMasterVolFM, mMasterVolPSG, mMasterVolDAC
 
 .ch =	mDAC1
@@ -89,8 +74,8 @@ DrawScene:
 			dc.w .ch+cPortaSpeed
 		endif
 
-		dc.w .ch, .ch+cPanning, .ch+cPitch, .ch+cVolume
+		dc.w .ch, .ch+cPanning, .ch+cPitch, .ch+cChipVol
 		dc.w .ch+cVoice, .ch+cLastDur, .ch+cDuration
-		dc.w 0, .ch+cFreq, .modf-.rt, .ch
+		dc.w 0, .ch+cFreq, 0, .ch+cChipFreq
 .ch =		.ch+cSize
 	endr

@@ -15,7 +15,7 @@ dPlaySnd_Pause:
 		bne.w	locret_MuteDAC		; if was already paused, skip
 ; ---------------------------------------------------------------------------
 ; The following code will set channel panning to none for all FM channels.
-; This will ensure they are muted while we are pausing.
+; This will ensure they are muted while we are pausing
 ; ---------------------------------------------------------------------------
 
 		moveq	#3-1,d6			; 3 channels per YM2616 "part"
@@ -28,6 +28,7 @@ dPlaySnd_Pause:
 		clr.b	(a0)+			; write to part 1
 		clr.b	(a0)+			; pan to neither speaker and remove LFO
 		move.b	d5,(a0)+		; YM address: Panning and LFO
+
 		move.b	d4,(a0)+		; write to part 2
 		clr.b	(a0)+			; pan to neither speaker and remove LFO
 		move.b	d5,(a0)+		; YM address: Panning and LFO
@@ -39,7 +40,7 @@ dPlaySnd_Pause:
 ; behavior in that, we must write all channels into part 1, and we
 ; control the channel we are writing in the data portion.
 ; 4 bits are reserved for which operators are active (in this case,
-; none), and 3 bits are reserved for the channel we want to affect.
+; none), and 3 bits are reserved for the channel we want to affect
 ; ---------------------------------------------------------------------------
 
 		moveq	#$28,d5			; YM address: Key on/off
@@ -49,6 +50,7 @@ dPlaySnd_Pause:
 		move.b	d6,d4			; copy value into d4
 	WriteYM1	d5, d4			; write part 1 to YM
 		addq.b	#4,d4			; set this to part 2 channel
+
 	WriteYM1	d5, d4			; write part 2 to YM
 		dbf	d6,.note		; loop for all 3 channel groups
 	;	st	(a0)			; write end marker
@@ -66,16 +68,16 @@ dPlaySnd_Pause:
 ; ---------------------------------------------------------------------------
 
 dMuteDAC:
-	StopZ80					; wait for Z80 to stop
-		lea	SampleList(pc),a5	; load address for the stop sample data into a2
-		lea	dZ80+PCM1_Sample,a4	; load addresses for PCM 1 sample to a1
+	stopZ80					; wait for Z80 to stop
+		lea	SampleList(pc),a5	; load address for the stop sample data into a5
+		lea	dZ80+PCM1_Sample,a4	; load addresses for PCM 1 sample to a4
 
 	rept 12
 		move.b	(a5)+,(a4)+		; send sample data to Dual PCM
 	endr
 
-		lea	SampleList(pc),a5	; load address for the stop sample data into a2
-		lea	dZ80+PCM2_Sample,a4	; load addresses for PCM 2 sample to a1
+		lea	SampleList(pc),a5	; load address for the stop sample data into a5
+		lea	dZ80+PCM2_Sample,a4	; load addresses for PCM 2 sample to a4
 
 	rept 12
 		move.b	(a5)+,(a4)+		; send sample data to Dual PCM
@@ -83,7 +85,7 @@ dMuteDAC:
 
 		move.b	#$CA,dZ80+PCM1_NewRET	; activate sample switch (change instruction)
 		move.b	#$CA,dZ80+PCM2_NewRET	; activate sample switch (change instruction)
-	StartZ80				; enable Z80 execution
+	startZ80				; enable Z80 execution
 
 locret_MuteDAC:
 		rts
@@ -109,7 +111,7 @@ dPlaySnd_Unpause:
 ; by sound effects, and that each running sound effect channel gets
 ; updated. We do not handle key on's, since that could potentially
 ; cause issues if notes are half-done. The next time tracker plays
-; notes, they start being audible again.
+; notes, they start being audible again
 ; ---------------------------------------------------------------------------
 
 		lea	mFM1.w,a1		; start from FM1 channel
@@ -121,9 +123,9 @@ dPlaySnd_Unpause:
 
 .musloop
 		tst.b	(a1)			; check if the channel is running a tracker
-		bpl.s	.skipmus		; if not, do not update
+		bpl.s	.skipmus		; if not, skip updating
 		btst	#cfbInt,(a1)		; is the channel interrupted by SFX?
-		bne.s	.skipmus		; if is, do not update
+		bne.s	.skipmus		; if is, skip updating
 
 	if FEATURE_FM3SM
 		btst	#ctbFM3sm,cType(a1)	; is this FM3 in special mode?
@@ -140,14 +142,15 @@ dPlaySnd_Unpause:
 .skipmus
 		adda.w	d3,a1			; go to next channel
 		dbf	d0,.musloop		; repeat for all music FM channels
+; ---------------------------------------------------------------------------
 
 		lea	mSFXFM3.w,a1		; start from SFX FM1 channel
-		moveq	#SFX_FM-1,d0		; load the number of SFX FM channels to d4
+		moveq	#SFX_FM-1,d0		; load the number of SFX FM channels to d0
 		moveq	#cSizeSFX,d3		; get the size of each SFX channel to d3
 
 .sfxloop
 		tst.b	(a1)			; check if the channel is running a tracker
-		bpl.s	.skipsfx		; if not, do not update
+		bpl.s	.skipsfx		; if not, skip updating
 	InitChYM				; prepare to write to YM
 	WriteChYM	#$B4, cPanning(a1)	; Panning and LFO: read from channel
 
@@ -155,8 +158,8 @@ dPlaySnd_Unpause:
 		adda.w  d3,a1			; go to next channel
 		dbf     d0,.sfxloop		; repeat for all SFX FM channels
 ; ---------------------------------------------------------------------------
-; Since the DAC channels have or based panning behavior, we need this
-; piece of code to update its panning
+; Since the DAC channels have OR based panning behavior, we need this
+; piece of code to update its panning correctly
 ; ---------------------------------------------------------------------------
 
 		move.b	mDAC1+cPanning.w,d4	; read panning value from music DAC1
@@ -165,8 +168,8 @@ dPlaySnd_Unpause:
 		move.b	mSFXDAC1+cPanning.w,d4	; read panning value from SFX DAC1
 
 .nodacsfx
-		or.b	mDAC2+cPanning.w,d4	; or the panning value from music DAC2
-	WriteYM2	#$B4+2, d4		; Panning & LFO
+		or.b	mDAC2+cPanning.w,d4	; OR the panning value from music DAC2
+	WriteYM2	#$B6, d4		; Panning & LFO
 	;	st	(a0)			; write end marker
 	startZ80
 
@@ -196,13 +199,13 @@ dPlaySnd:
 	if safe=1
 		AMPS_Debug_SoundID		; check if the sound ID is valid
 	endif
-
 		clr.b	-1(a4)			; clear the slot we are processing
+
 		cmpi.b	#SFXoff,d1		; check if this sound was a sound effect
 		bhs.w	dPlaySnd_SFX		; if so, handle it
 		cmpi.b	#MusOff,d1		; check if this sound was a command
 		blo.w	dPlaySnd_Comm		; if so, handle it
-	; it was music, handle it below
+	; it was a music, handle it below
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Subroutine to play a queued music track
@@ -222,30 +225,27 @@ dPlaySnd_Music:
 ; ---------------------------------------------------------------------------
 ; To save few cycles, we don't directly substract the music offset from
 ; the ID, and instead offset the table position. In practice this will
-; have the same effect, but saves us 8 cycles overall.
+; have the same effect, but saves us 8 cycles overall
 ; ---------------------------------------------------------------------------
 
 		lea	MusicIndex-(MusOff*4)(pc),a2; get music pointer table with an offset
 		add.w	d1,d1			; quadruple music ID
 		add.w	d1,d1			; since each entry is 4 bytes in size
-
-		move.b	(a2,d1.w),d6		; load speed shoes tempo from the unused 8 bits
-		ext.w	d6			; extend to word
-		move.w	d6,-(sp)		; store in stack :(
-		movea.l	(a2,d1.w),a2		; get music header pointer from the table
+		move.b	(a2,d1.w),d6		; load speed shoes tempo from the unused 8 bits into d6
+		move.l	(a2,d1.w),a2		; get music header pointer from the table
 
 	if safe=1
-		move.l	a2,d2			; copy pointer to d0
+		move.l	a2,d2			; copy pointer to d2
 		and.l	#$FFFFFF,d2		; clearing the upper 8 bits allows the debugger
 		move.l	d2,a2			; to show the address correctly. Move ptr back to a2
 		AMPS_Debug_PlayTrackMus		; check if this was valid music
 	endif
 ; ---------------------------------------------------------------------------
-; The following code will 'back-up' every song by copying its data to
-; other memory location. There is another piece of code that will copy
-; back once the other song ends. This will do proper restoration of the
+; The following code will 'back up' every song by copying its data to
+; another memory location. There is another piece of code that will copy
+; it back once the song ends. This will do proper restoration of the
 ; channels into hardware! The 6th bit of tick multiplier is used to
-; determine whether to back-up or not...
+; determine whether to back up or not
 ; ---------------------------------------------------------------------------
 
 	if FEATURE_BACKUP
@@ -254,8 +254,7 @@ dPlaySnd_Music:
 		bset	#mfbBacked,mFlags.w	; check if song was backed up (and if not, set the bit)
 		bne.s	.noback			; if yes, preserved the backed up song
 
-		move.l	mTempoMain.w,mBackTempoMain.w; backup tempo settings
-		move.l	mTempo.w,mBackTempo.w	; ''
+		move.l	mSpeed.w,mBackSpeed.w	; backup tempo settings
 		move.l	mVctMus.w,mBackVctMus.w	; backup voice table address
 
 		lea	mBackUpArea.w,a4	; load source address to a4
@@ -270,7 +269,7 @@ dPlaySnd_Music:
 		move.w	(a4)+,(a3)+		; back up data for every channel
 	endif
 
-		mvnbt.q	cfbInt, cfbVol, d3	; each other bit except interrupted and volume update bits
+		moveq	#$FFFFFFFF-(1<<cfbInt)|(1<<cfbVol),d3; each other bit except interrupted and volume update bits
 
 .ch =		mBackDAC1			; start at backup DAC1
 		rept Mus_Ch			; do for all music channels
@@ -286,10 +285,17 @@ dPlaySnd_Music:
 	endif
 ; ---------------------------------------------------------------------------
 
+		move.b	d6,mSpeed.w		; save loaded value into tempo speed setting
+		move.b	d6,mSpeedAcc.w		; save loaded value as tempo speed accumulator
 		jsr	dStopMusic(pc)		; mute hardware and reset all driver memory
 		jsr	dResetVolume(pc)	; reset volumes and end any fades
-		move.b	#0,mMusicFlags.w	; set default music flags
+; ---------------------------------------------------------------------------
+; If the 7th bit (msb) of tick multiplier is set, PAL fix gets disabled.
+; I know, very weird place to put it, but we dont have much free room
+; in the song header
+; ---------------------------------------------------------------------------
 
+		move.b	#0,mMusicFlags.w	; set default music flags
 		btst	#mfbBlockUW,(a2)	; check if underwater mode was blocked
 		beq.s	.nouwd			; if not, skip
 		or.b	#1<<mfbBlockUW,mMusicFlags.w; disable underwater mode
@@ -302,40 +308,31 @@ dPlaySnd_Music:
 
 .nouwo
 		and.b	#$FF-(1<<mfbNoPAL),mFlags.w; enable PAL fix
-		move.w	(a2)+,d3		; load song tempo to d3
-		bpl.s	.noPAL			; branch if the loaded value was positive
+		tst.b	(a2)+			; check if pal fix was disabled
+		bmi.s	.yesPAL			; branch if yes
+		btst	#6,ConsoleRegion.w	; is this PAL system?
+		bne.s	.noPAL			; if yes, branch
+
+.yesPAL
 		or.b	#1<<mfbNoPAL,mFlags.w	; disable PAL fix
+; ---------------------------------------------------------------------------
 
 .noPAL
-		and.w	#$0FFF,d3		; clear extra bits
-		move.w	d3,d6			; copy to d6
-		add.w	(sp)+,d6		; add stored tempo from stack
-		move.w	d6,mTempoSpeed.w	; save d6 as speed tempo
-		move.w	d3,mTempoMain.w		; save d3 as regular tempo
-
-		btst	#mfbSpeed,mFlags.w	; check if speed shoes flag was set
-		beq.s	.tempogot		; if not, use main tempo
-		move.w	d6,d3			; load speed shoes tempo to d3 instead
-
-.tempogot
-		move.w	d3,mTempo.w		; save as the current tempo
-		move.w	d3,mTempoAcc.w		; copy into the accumulator/counter
-; ---------------------------------------------------------------------------
-; If the 7th bit (msb) of tick multiplier is set, PAL fix gets
-; disabled. I know, very weird place to put it, but we dont have
-; much free room in the song header
-; ---------------------------------------------------------------------------
+		move.b	(a2)+,d3		; load song tempo to d3
+		move.b	d3,mTempo.w		; save as the tempo accumulator
+		move.b	d3,mTempoAcc.w		; copy into the accumulator/counter
 
 		moveq	#0,d4			; clear d4
 		move.b	(a2),d4			; load the PSG channel count to d4
 		addq.w	#2,a2			; go to DAC1 data section
 
-		mvbit.q	cfbRun, cfbVol, d2	; prepare running tracker and volume flags into d2
-		moveq	#$FFFFFFC0,d1		; prepare panning value of centre to d1
-		move.w	#$100,d3		; prepare default DAC frequency
-
 		moveq	#cSize,d6		; prepare channel size to d6
 		moveq	#1,d5			; prepare duration of 0 frames to d5
+
+		moveq	#$FFFFFF00|(1<<cfbRun)|(1<<cfbVol),d2; prepare running tracker and volume flags into d2
+		moveq	#$FFFFFFC0,d1		; prepare panning value of centre to d1
+		move.w	#$100,d3		; prepare default DAC frequency to d3
+; ---------------------------------------------------------------------------
 
 		lea	mDAC1.w,a1		; start from DAC1 channel
 		lea	dDACtypeVals(pc),a4	; prepare DAC (and FM) type value list into a4
@@ -359,16 +356,17 @@ dPlaySnd_Music:
 		move.b	(a2)+,cVolume(a1)	; load channel volume
 		move.b	(a2)+,cSample(a1)	; load channel sample ID
 		beq.s	.sampmode		; if 0, we are in sample mode
-		bset	#cfbMode,(a1)		; if not 0, enable pitch mode
+		bset	#cfbMode,(a1)		; if not, enable pitch mode
 
 .sampmode
 		add.w	d6,a1			; go to the next channel
 		dbf	d0,.loopDAC		; repeat for all DAC channels
+; ---------------------------------------------------------------------------
 
-		moveq	#0,d0
 		move.b	-9(a2),d0		; load the FM channel count to d0
 		bmi.w	.doPSG			; if no FM channels are loaded, branch
-		mvbit.q	cfbRun, cfbRest, d2	; prepare running tracker and channel rest flags to d2
+		ext.w	d0			; convert byte to word (because of dbf)
+		moveq	#$FFFFFF00|(1<<cfbRun)|(1<<cfbRest),d2; prepare running tracker and channel rest flags to d2
 
 .loopFM
 	if FEATURE_FM3SM
@@ -378,7 +376,6 @@ dPlaySnd_Music:
 
 .nosm
 	endif
-
 		move.b	d2,(a1)			; save channel flags
 		move.b	(a4)+,cType(a1)		; load channel type from list
 		move.b	d6,cStack(a1)		; reset channel stack pointer
@@ -395,14 +392,6 @@ dPlaySnd_Music:
 		move.w	(a2)+,cPitch(a1)	; load pitch offset and channel volume
 		adda.w	d6,a1			; go to the next channel
 		dbf	d0,.loopFM		; repeat for all FM channels
-
-.doPSG
-		tst.b	d4			; check how many PSG channels there are
-	if safe=1
-		bmi.w	.intSFX			; if no PSG channels are loaded, branch
-	else
-		bmi.s	.intSFX			; if no PSG channels are loaded, branch
-	endif
 ; ---------------------------------------------------------------------------
 ; The reason why we delay PSG by 1 extra frame, is because of Dual PCM.
 ; It adds a delay of 1 frame to DAC and FM due to the YMCue, and PCM
@@ -411,7 +400,15 @@ dPlaySnd_Music:
 ; this fix.
 ; ---------------------------------------------------------------------------
 
-		mvbit.q	cfbRun, cfbVol, cfbRest, d2; prepare running tracker, resting and volume flags into d2
+.doPSG
+		tst.b	d4			; check how many PSG channels there are
+	if safe=1
+		bmi.w	.finish			; if no PSG channels are loaded, branch
+	else
+		bmi.s	.finish			; if no PSG channels are loaded, branch
+	endif
+
+		moveq	#$FFFFFF00|(1<<cfbRun)|(1<<cfbVol)|(1<<cfbRest),d2; prepare running tracker, resting and volume flags into d2
 		moveq	#2,d5			; prepare duration of 1 frames to d5
 		lea	dPSGtypeVals(pc),a4	; prepare PSG type value list into a4
 		lea	mPSG1.w,a1		; start from PSG1 channel
@@ -433,20 +430,20 @@ dPlaySnd_Music:
 		move.b	(a2)+,cDetune(a1)	; load detune offset
 		move.b	(a2)+,cVolEnv(a1)	; load volume envelope ID
 		adda.w	d6,a1			; go to the next channel
-		dbf	d4,.loopPSG		; repeat for all PSG channels
+		dbf	d4,.loopPSG		; repeat for all FM channels
 ; ---------------------------------------------------------------------------
 ; Unlike SMPS, AMPS does not have pointer to the voice table of
 ; a song. This may be limiting for some songs, but this allows AMPS
 ; to save 2 bytes for each music and sound effect file. This line
-; of code sets the music voice table address at the end of the header.
+; of code sets the music voice table address at the end of the header
 ; ---------------------------------------------------------------------------
 
-.intSFX
+.finish
 		move.l	a2,mVctMus.w		; set voice table address to a2
 ; ---------------------------------------------------------------------------
 ; Now follows initializing FM6 to be ready for PCM streaming,
 ; and resetting the PCM filter for Dual PCM. Simply, this just
-; clears some YM registers.
+; clears some YM registers
 ; ---------------------------------------------------------------------------
 
 	if FEATURE_FM6
@@ -454,26 +451,28 @@ dPlaySnd_Music:
 		bmi.s	.yesFM6			; if so, do NOT initialize FM6 to mute
 	endif
 
+		moveq	#$7F, d3		; set total level to $7F (silent)
 	CheckCue				; check that cue is valid
 	stopZ80
+
 	WriteYM1	#$28, #6		; Key on/off: FM6, all operators off
-		moveq	#$7F, d3		; set total level to $7F (silent)
 	WriteYM2	#$42, d3		; Total Level Operator 1 (FM3/6)
-	WriteYM2	#$4A, d3		; Total Level Operator 2 (FM3/6)
-	WriteYM2	#$46, d3		; Total Level Operator 3 (FM3/6)
+	WriteYM2	#$4A, d3		; Total Level Operator 3 (FM3/6)
+	WriteYM2	#$46, d3		; Total Level Operator 2 (FM3/6)
 	WriteYM2	#$4E, d3		; Total Level Operator 4 (FM3/6)
-	WriteYM2	#$B4+2, #$C0		; Panning and LFO (FM3/6): centre
+
+	WriteYM2	#$B6, #$C0		; Panning and LFO (FM3/6): centre
 	;	st	(a0)			; write end marker
 	startZ80
 
 .yesFM6
 		moveq	#(fLog>>$0F)&$FF,d4	; use logarithmic filter
 		jmp	dSetFilter(pc)		; set filter
-
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Type values for different channels. Used for playing music
 ; ---------------------------------------------------------------------------
+
 dDACtypeVals:	dc.b ctDAC1, ctDAC2
 dFMtypeVals:	dc.b ctFM1, ctFM2, ctFM3, ctFM4, ctFM5
 	if FEATURE_FM6
@@ -510,26 +509,26 @@ dPlaySnd_SFX:
 ; ---------------------------------------------------------------------------
 ; To save few cycles, we don't directly substract the SFX offset from
 ; the ID, and instead offset the table position. In practice this will
-; have the same effect, but saves us 8 cycles overall.
+; have the same effect, but saves us 8 cycles overall
 ; ---------------------------------------------------------------------------
 
-		lea	SoundIndex-(SFXoff*4)(pc),a1; get sfx pointer table with an offset to a4
+		lea	SoundIndex-(SFXoff*4)(pc),a1; get sfx pointer table with an offset to a1
 		add.w	d1,d1			; quadruple sfx ID
 		add.w	d1,d1			; since each entry is 4 bytes in size
-		movea.l	(a1,d1.w),a2		; get SFX header pointer from the table
+		move.l	(a1,d1.w),a2		; get SFX header pointer from the table
 ; ---------------------------------------------------------------------------
 ; This implements a system where the sound effect swaps every time its
 ; played. This in particular needed with Sonic 1 to 3K, where the ring SFX
 ; would every time change the panning by playing a different SFX ID. AMPS
-; extends this system to support any number of SFX following this same system.
+; extends this system to support any number of SFX following this same system
 ; ---------------------------------------------------------------------------
 
 		btst	#0,(a1,d1.w)		; check if sound effect has swapping behaviour
 		beq.s	.noswap			; if not, skip
-		bchg	#mfbSwap,mFlags.w	; swap th flag and check if it was set
+		bchg	#mfbSwap,mFlags.w	; swap the flag and check if it was set
 		beq.s	.noswap			; if was not, do not swap sound effect
 		addq.w	#4,d1			; go to next SFX
-		movea.l	(a1,d1.w),a2		; get the next SFX pointer from the table
+		move.l	(a1,d1.w),a2		; get the next SFX pointer from the table
 
 .noswap
 	if safe=1
@@ -556,7 +555,7 @@ dPlaySnd_SFX:
 ; the same ID. Since there is no way to show any sfx is continous when
 ; its running, there is no way to fix this without doing it this way. If
 ; this breaks anything significant, let me know and I'll tackle this
-; problem once again.
+; problem once again
 ; ---------------------------------------------------------------------------
 
 		moveq	#0,d6			; prepare extra flags to none
@@ -581,43 +580,45 @@ dPlaySnd_SFX:
 		move.b	1(a2),mContCtr.w	; copy the number of channels as the new continous loop counter
 		addq.b	#1,mContCtr.w		; increment by 1, since num of channels is -1 the actual channel count
 		rts
+; ---------------------------------------------------------------------------
 
 .nocont
 		moveq	#0,d1			; clear last continous sfx
 
 .setcont
 		move.b	d1,mContLast.w		; save new continous SFX ID
-		moveq	#0,d1			; reset channel count
 		lea	dSFXoverList(pc),a5	; load quick reference to the SFX override list to a5
 		lea	dSFXoffList(pc),a4	; load quick reference to the SFX channel list to a4
 
-		moveq	#0,d0
-		move.b	(a2)+,d5		; load sound effect priority to d5
-		move.b	(a2)+,d0		; load number of SFX channels to d0
+		moveq	#0,d1			; reset channel count
+		move.b	d6,d1			; store flags in d1.w
 ; ---------------------------------------------------------------------------
 ; The reason why we delay PSG by 1 extra frame, is because of Dual PCM.
 ; It adds a delay of 1 frame to DAC and FM due to the YMCue, and PCM
 ; buffering to avoid quality loss from DMA's. This means that, since PSG
 ; is controlled by the 68000, we would be off by a single frame without
-; this fix.
+; this fix
 ; ---------------------------------------------------------------------------
+
+		moveq	#0,d0
+		move.b	(a2)+,d2		; load sound effect priority to d2
+		move.b	(a2)+,d0		; load number of SFX channels to d0
+		moveq	#cSizeSFX,d6		; prepare SFX channel size to d6
 
 .loopSFX
 		moveq	#0,d3
-		moveq	#2,d2			; prepare duration of 1 frames to d2
 		move.b	1(a2),d3		; load sound effect channel type to d3
-		move.b	d3,d4			; copy type to d4
+		move.b	d3,d5			; copy type to d5
 		bmi.w	.chPSG			; if channel is a PSG channel, branch
 
 		and.w	#$07,d3			; get only the necessary bits to d3
-		subq.w	#2,d3			; since FM 1 and 2 are not used, skip over them
 		add.w	d3,d3			; double offset (each entry is 1 word in size)
 
-		move.w	(a4,d3.w),a1		; get the SFX channel we are trying to load to
-		cmp.b	cPrio(a1),d5		; check if this sound effect has higher priority
+		move.w	-4(a4,d3.w),a1		; get the SFX channel we are trying to load to
+		cmp.b	cPrio(a1),d2		; check if this sound effect has higher priority
 		blo.s	.skip			; if not, we can not override it
 
-		move.w	(a5,d3.w),a3		; get the music channel we should override
+		move.w	-4(a5,d3.w),a3		; get the music channel we should override
 		bset	#cfbInt,(a3)		; override music channel with sound effect
 
 	if FEATURE_FM3SM
@@ -630,7 +631,7 @@ dPlaySnd_SFX:
 
 .nofm3
 	endif
-		moveq	#1,d2			; prepare duration of 0 frames to d2
+		moveq	#1,d4			; prepare duration of 0 frames to d4
 		bra.s	.clearCh
 ; ---------------------------------------------------------------------------
 
@@ -638,6 +639,7 @@ dPlaySnd_SFX:
 		addq.l	#6,a2			; skip this sound effect channel
 		dbf	d0,.loopSFX		; repeat for each requested channel
 
+		swap	d1			; get chan count to d1.w
 		tst.w	d1			; check if any channel was loaded
 		bne.s	.rts			; if was, branch
 		clr.b	mContLast.w		; reset continous sfx counter (prevent ghost-loading)
@@ -649,7 +651,7 @@ dPlaySnd_SFX:
 .chPSG
 		lsr.w	#4,d3			; make it easier to reference the right offset in the table
 		move.w	(a4,d3.w),a1		; get the SFX channel we are trying to load to
-		cmp.b	cPrio(a1),d5		; check if this sound effect has higher priority
+		cmp.b	cPrio(a1),d2		; check if this sound effect has higher priority
 		blo.s	.skip			; if not, we can not override it
 
 	if FEATURE_PSGADSR
@@ -660,31 +662,35 @@ dPlaySnd_SFX:
 
 		move.w	(a5,d3.w),a3		; get the music channel we should override
 		bset	#cfbInt,(a3)		; override music channel with sound effect
-		ori.b	#$1F,d4			; add volume update and max volume to channel type
-		move.b	d4,dPSG			; send volume mute command to PSG
+		moveq	#2,d4			; prepare duration of 1 frames to d4
 
-		cmpi.b	#ctPSG3|$1F,d4		; check if we sent command about PSG3
+		ori.b	#$1F,d5			; add volume update and max volume to channel type
+		move.b	d5,dPSG			; send volume mute command to PSG
+
+		cmpi.b	#ctPSG3|$1F,d5		; check if we sent command about PSG3
 		bne.s	.clearCh		; if not, skip
 		move.b	#ctPSG4|$1F,dPSG	; send volume mute command for PSG4 to PSG
 
 	if FEATURE_PSGADSR
 		bset	#cfbInt,mPSG4+cFlags.w	; override music PSG4 too
 	endif
+; ---------------------------------------------------------------------------
 
 .clearCh
 		move.w	a1,a3			; copy sound effect channel RAM pointer to a3
-		moveq	#cSizeSFX/4-1,d3	; prepare SFX channel size / 4 to d3
-.clear
+
+	rept cSizeSFX/4				; repeat by the number of long words for channel data
 		clr.l	(a3)+			; clear 4 bytes of channel data
-		dbf	d3,.clear		; clear the entire channel
+	endr
 
 	if cSizeSFX&2
-		clr.w	(a3)			; if channel size can not be divided by 4, clear extra word
+		clr.w	(a3)+			; if channel size can not be divided by 4, clear extra word
 	endif
+; ---------------------------------------------------------------------------
 
 		move.l	(a2)+,(a1)		; load channel flags, type, pitch offset and channel volume
-		move.b	d5,cPrio(a1)		; set channel priority
-		move.b	d2,cDuration(a1)	; reset channel duration
+		move.b	d2,cPrio(a1)		; set channel priority
+		move.b	d4,cDuration(a1)	; reset channel duration
 
 		move.l	a2,a3			; load music header position to a3
 		add.w	(a2)+,a3		; add tracker offset to a3
@@ -695,14 +701,18 @@ dPlaySnd_SFX:
 
 		move.b	mFlags.w,d3		; load flags value to d3
 		and.b	#1<<mfbWater,d3		; get only underwater flags (copy it)
-		or.b	d6,d3			; or any other necessary flags from d6
+		or.b	d1,d3			; OR any other necessary flags from d1.w
 		move.b	d3,cExtraFlags(a1)	; save extra flags value
 
-		tst.b	d4			; check if this channel is a PSG channel
-		bmi.s	.loop			; if is, skip over this
+		swap	d1			; get chan count to d1.w
+		addq.w	#1,d1			; set channel as loaded
+		swap	d1			; get flags to d1.w
 
+		tst.b	d5			; check if this channel is a PSG channel
+		bmi.s	.loop			; if is, skip over this
 		moveq	#$FFFFFFC0,d3		; set panning to centre
 		move.b	d3,cPanning(a1)		; save to channel memory too
+
 	CheckCue				; check that YM cue is valid
 	InitChYM				; prepare to write to channel
 	stopZ80
@@ -715,14 +725,13 @@ dPlaySnd_SFX:
 		move.w	#$100,cFreq(a1)		; DAC default frequency is $100, NOT $000
 
 .loop
-		addq.w	#1,d1			; set channel as loaded
 		dbf	d0,.loopSFX		; repeat for each requested channel
 		rts
 ; ---------------------------------------------------------------------------
 ; The instant release for FM channels behavior was not in the Sonic 1
 ; SMPS driver by default, but it has been added since it fixes an
 ; issue with YM2612, where sometimes subsequent sound effect activations
-; would sound different over time. This fix will help to mitigate that.
+; would sound different over time. This fix will help to mitigate that
 ; ---------------------------------------------------------------------------
 
 .fm
@@ -730,19 +739,20 @@ dPlaySnd_SFX:
 	CheckCue				; check that YM cue is valid
 	InitChYM				; prepare to write to channel
 	stopZ80
+
 	WriteYM1	#$28, cType(a1)		; Key on/off: all operators off
 	WriteChYM	#$80, d3		; Release Rate Operator 1
-	WriteChYM	#$88, d3		; Release Rate Operator 2
-	WriteChYM	#$84, d3		; Release Rate Operator 3
+	WriteChYM	#$88, d3		; Release Rate Operator 3
+	WriteChYM	#$84, d3		; Release Rate Operator 2
 	WriteChYM	#$8C, d3		; Release Rate Operator 4
+
 	;	st	(a0)			; write end marker
 	startZ80
-
 		dbf	d0,.loopSFX		; repeat for each requested channel
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; pointers for music channels SFX can override and addresses of SFX channels
+; Pointers for music channels SFX can override and addresses of SFX channels
 ; ---------------------------------------------------------------------------
 
 	if FEATURE_PSGADSR
@@ -798,8 +808,8 @@ dPlaySnd_Comm:
 		add.w	d1,d1			; quadruple ID
 		add.w	d1,d1			; because each entry is 1 long word
 		jmp	dSoundCommands-4(pc,d1.w); jump to appropriate command handler
-
 ; ---------------------------------------------------------------------------
+
 dSoundCommands:
 		bra.w	dPlaySnd_Reset		; 01 - Reset underwater and speed shoes flags, update volume
 		bra.w	dPlaySnd_FadeOut	; 02 - Initialize a music fade out
@@ -872,10 +882,9 @@ dPlaySnd_Stop:
 
 dStopMusic:
 	dSetFM3SM	#$00			; disable FM3 special mode
-
-		lea	mVctMus.w,a4		; load driver RAM start to a1
-		move.b	mMasterVolDAC.w,d5	; load DAC master volume to d4
-	dCLEAR_MEM	mChannelEnd-mVctMus, 32	; clear this block of memory with 32 byts per loop
+		lea	mVctMus.w,a4		; load driver RAM start to a4
+		move.b	mMasterVolDAC.w,d5	; load DAC master volume to d5
+	dCLEAR_MEM	mChannelEnd-mVctMus, 32	; clear this block of memory with 32 bytes per loop
 
 	if FEATURE_PSGADSR
 		dResetADSR	a4, d6, 3	; reset ADSR data for PSG
@@ -884,6 +893,7 @@ dStopMusic:
 	if safe=1
 		clr.b	msChktracker.w		; if in safe mode, also clear the check tracker variable!
 	endif
+; ---------------------------------------------------------------------------
 
 		move.b	d5,mMasterVolDAC.w	; save DAC master volume
 		jsr	dMuteFM(pc)		; hardware mute FM
@@ -899,10 +909,10 @@ dStopMusic:
 
 dMutePSG:
 		lea	dPSG,a4			; load PSG data port address to a4
-		move.b	#ctPSG1|$1F,(a4)	; send volume mute command for PSG1 to PSG
-		move.b	#ctPSG2|$1F,(a4)	; send volume mute command for PSG2 to PSG
-		move.b	#ctPSG3|$1F,(a4)	; send volume mute command for PSG3 to PSG
-		move.b	#ctPSG4|$1F,(a4)	; send volume mute command for PSG4 to PSG
+		move.b	#ctPSG1|$1F,(a4)	; send volume mute command for PSG1
+		move.b	#ctPSG2|$1F,(a4)	; send volume mute command for PSG2
+		move.b	#ctPSG3|$1F,(a4)	; send volume mute command for PSG3
+		move.b	#ctPSG4|$1F,(a4)	; send volume mute command for PSG4
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -912,7 +922,7 @@ dMutePSG:
 ;   a4 - Used by other function
 ;   d4 - Lowest byte gets cleared.
 ;   d5 - Used by other function
-;   d6 - Used for or-ing volume
+;   d6 - Used for OR-ing volume
 ; ---------------------------------------------------------------------------
 
 dResetVolume:
@@ -921,9 +931,10 @@ dResetVolume:
 		clr.b	mMasterVolDAC.w		; reset DAC master volume
 		moveq	#(fLog>>$0F)&$FF,d4	; use logarithmic filter
 		jsr	dSetFilter(pc)		; load filter instructions
+; ---------------------------------------------------------------------------
 
 dUpdateVolumeAll:
-		bsr.w	dReqVolUpFM		; request FM volume update
+		bsr.s	dReqVolUpFM		; request FM volume update
 		or.b	d6,mSFXDAC1.w		; request update for SFX DAC1 channel
 
 .ch =	mDAC1					; start at DAC1
@@ -955,7 +966,7 @@ dPlaySnd_Reset:
 	endif
 
 	if FEATURE_UNDERWATER
-		bsr.s	dPlaySnd_OutWater	; gp reset underwater flag and request volume update
+		bsr.s	dPlaySnd_OutWater	; reset underwater flag and request volume update
 	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -964,13 +975,14 @@ dPlaySnd_Reset:
 
 dPlaySnd_ShoesOff:
 		bclr	#mfbSpeed,mFlags.w	; disable speed shoes flag
-		move.w	mTempoMain.w,mTempoAcc.w; set tempo accumulator/counter to normal one
-		move.w	mTempoMain.w,mTempo.w	; set main tempor to normal one
+		rts
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Enable speed shoes mode
+; ---------------------------------------------------------------------------
 
-	if FEATURE_BACKUP
-		move.w	mBackTempoMain.w,mBackTempoAcc.w; do the same for backup tempos
-		move.w	mBackTempoMain.w,mBackTempo.w
-	endif
+dPlaySnd_ShoesOn:
+		bset	#mfbSpeed,mFlags.w	; enable speed shoes flag
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -992,6 +1004,7 @@ dPlaySnd_OutWater:
 	if FEATURE_UNDERWATER
 		bclr	#mfbWater,mFlags.w	; disable underwater mode
 		bsr.s	dReqVolUpFM		; request FM volume update
+; ---------------------------------------------------------------------------
 
 dPlaySnd_UpdateUW:
 		btst	#mfbWater,mFlags.w	; check if underwater mode is active
@@ -1012,19 +1025,22 @@ dPlaySnd_UpdateUW:
 ; Force volume update on all FM channels
 ;
 ; thrash:
-;   d6 - Used for quickly or'ing the value
+;   d6 - Used for quickly OR-ing the value
 ; ---------------------------------------------------------------------------
 
 dReqVolUpFM:
-		moveq	#1<<cfbVol,d6		; prepare volume update flag to d0
+		moveq	#1<<cfbVol,d6		; prepare volume update flag to d6
+
 .ch =	mSFXFM3					; start at SFX FM3
 	rept SFX_FM				; loop through all SFX FM channels
 		or.b	d6,.ch.w		; request channel volume update
 .ch =		.ch+cSizeSFX			; go to next channel
 	endr
+; ---------------------------------------------------------------------------
 
 dReqVolUpMusicFM:
-		moveq	#1<<cfbVol,d6		; prepare volume update flag to d0
+		moveq	#1<<cfbVol,d6		; prepare volume update flag to d6
+
 .ch =	mFM1					; start at FM1
 	rept Mus_FM				; loop through all music FM channels
 		or.b	d6,.ch.w		; request channel volume update
@@ -1049,35 +1065,16 @@ dPlaySnd_UpdateEnableUW:
 		or.b	d5,mMusicFlags.w	; enable underwater mode for music
 
 .nomus
-.wtf		macro
 .ch =	mSFXFM3+cExtraFlags			; start at SFX FM3
 	rept SFX_FM				; loop through all SFX FM channels
 		and.b	d6,mMusicFlags.w	; disable underwater mode for sfx
 
 		btst	#mfbBlockUW,.ch.w	; check if underwater mode is blocked
-		bne.s	.nono\@			; if so, skip
+		bne.s	*+6			; if so, skip
 		or.b	d5,.ch.w		; enable underwater mode for sfx
 
-.nono\@
 .ch =		.ch+cSizeSFX			; go to next channel
 	endr
-		.wtf				; wtf
-    endm
 		rts
 	endif
-; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Enable speed shoes mode
-; ---------------------------------------------------------------------------
-
-dPlaySnd_ShoesOn:
-		bset	#mfbSpeed,mFlags.w	; enable speed shoes flag
-		move.w	mTempoSpeed.w,mTempoAcc.w; set tempo accumulator/counter to speed shoes one
-		move.w	mTempoSpeed.w,mTempo.w	; set main tempor to speed shoes one
-
-	if FEATURE_BACKUP
-		move.w	mBackTempoSpeed.w,mBackTempoAcc.w; do the same for backup tempos
-		move.w	mBackTempoSpeed.w,mBackTempo.w
-	endif
-		rts
-; ===========================================================================

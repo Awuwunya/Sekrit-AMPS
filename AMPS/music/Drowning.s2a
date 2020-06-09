@@ -1,6 +1,6 @@
 Drowning_Header:
 	sHeaderInit
-	sHeaderTempo	$A080
+	sHeaderTempo	$80, $80		; that $8X means that the 50hz "fix" is not applied to this song.
 	sHeaderCh	$05, $00
 	sHeaderDAC	Drowning_DAC1
 	sHeaderDAC	Drowning_DAC2
@@ -90,17 +90,13 @@ Drowning_FM1:
 	sVoice		$00
 	sGate		$05
 	sCall		Drowning_Call1
-	ssTempo		$AB
-	ssTempoShoes	$AB
+	ssTempo		$55
 	sCall		Drowning_Call1
-	ssTempo		$C0
-	ssTempoShoes	$C0
+	ssTempo		$40
 	sCall		Drowning_Call1
-	ssTempo		$D6
-	ssTempoShoes	$D6
+	ssTempo		$2A
 	sCall		Drowning_Call1
-	ssTempo		$E7
-	ssTempoShoes	$E7
+	ssTempo		$19
 	sCall		Drowning_Call1
 	dc.b nC5, $06
 	sStop

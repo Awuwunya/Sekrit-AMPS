@@ -1,6 +1,6 @@
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Normal fade out data
+; Fade out data used in AMPS
 ; ---------------------------------------------------------------------------
 
 dFadeOutDataLog:
@@ -28,9 +28,9 @@ dFadeOutDataLog:
 	dc.b $64, $69, $74,  $67, $69, $75,  $6B, $69, $77,  $6E, $69, $79
 	dc.b $72, $77, $7A,  $76, $77, $7C,  $79, $77, $7D,  $7D, $77, $7F
 	dc.b $7F, $7F, $7F, fReset
+; ---------------------------------------------------------------------------
 
-	if FEATURE_BACKUP		; this data is only needed when backup feature is enabled also.
-dFadeInDataLog:				; you may enable this regardless for personal uses
+dFadeInDataLog:
 	dc.b $7F, $7F, $7F,  $7D, $77, $7F,  $79, $77, $7D,  $76, $77, $7C
 	dc.b $72, $77, $7A,  $6E, $69, $79,  $6B, $69, $77,  $67, $69, $75
 	dc.b $64, $69, $74,  $61, $5C, $72,  $5E, $5C, $70,  $5A, $5C, $6F
@@ -55,11 +55,10 @@ dFadeInDataLog:				; you may enable this regardless for personal uses
 	dc.b $05, $06, $0D,  $04, $03, $0C,  $04, $03, $0A,  $03, $03, $08
 	dc.b $02, $03, $06,  $01, $00, $05,  $01, $00, $03,  $00, $00, $01
 	dc.b $00, $00, $00,  fEnd
-	endif
 	even
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Subroutine for initializing a fade effect.
+; Subroutine for initializing a fade effect
 ; Since the driver allows for such an extensive and customizable
 ; fading code, we may hit a snag if we use fades too fast. It is
 ; possible, for example, to fade out, then in the middle of that,
@@ -68,7 +67,7 @@ dFadeInDataLog:				; you may enable this regardless for personal uses
 ; aims to combat this by actually searching for the closest FM
 ; volume level in the fade program, and to start the new fade from
 ; where that byte appears. This can alter how long a volume fade
-; lasts however, and if PSG and DAC volume are not correct faded,
+; lasts however, and if PSG and DAC volume are not faded accordingly,
 ; it may still cause a jump in their volume (especially if only,
 ; say, DAC fades volume). In the future, there might be a fix for
 ; that.
@@ -85,8 +84,13 @@ dFadeInDataLog:				; you may enable this regardless for personal uses
 
 dPlaySnd_FadeOut:
 		lea	dFadeOutDataLog(pc),a4	; prepare stock fade out program to a4
+; ---------------------------------------------------------------------------
 
 dLoadFade:
+	if safe=1
+		AMPS_Debug_FadeAddr		; check whether this fade address is valid
+	endif
+
 		move.b	mMasterVolFM.w,d3	; load FM master volume to d3
 		tst.b	mFadeAddr+1.w		; check if a fade program is already executing
 		beq.s	.nofade			; if not, load fade as is
@@ -102,6 +106,7 @@ dLoadFade:
 		move.l	a4,mFadeAddr.w		; save new fade program address to memory
 		move.b	d3,mMasterVolFM.w	; put vol back
 		rts
+; ---------------------------------------------------------------------------
 
 .search
 		addq.l	#3,a5			; skip over the current volume group
@@ -114,13 +119,13 @@ dLoadFade:
 		bhs.s	.find			; if not, read next group
 
 		move.b	d4,d5			; else save the new difference
-		move.l	a5,a4			; also save the fade program address where we found it
+		move.l	a5,a4			; also save the fade program address right after the checked value
 		bra.s	.find			; loop through each group in the program
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Routine for loading a volume filter into Dual PCM ROM.
-; This routine will actually write the bank number the volume filter
-; is in. This requires volume filters are aligned to Z80 banks.
+; Routine for loading a volume filter bank into Dual PCM memory
+; This routine will write the bank number the volume filter is in
+; This requires that volume filters are aligned to Z80 bank boundaries
 ;
 ; input:
 ;   d4 - Bank ID of filter
@@ -132,26 +137,26 @@ dLoadFade:
 ; ---------------------------------------------------------------------------
 
 dSetFilter:
-		lea	dZ80+SV_VolumeBank.l,a4	; load volume bank instructions address to a1
-		moveq	#$74,d5			; prepare the "ld  (hl),h" instruction to d1
-	StopZ80					; wait for Z80 to stop
+		lea	dZ80+SV_VolumeBank,a4	; load volume bank instructions address to a4
+		moveq	#$74,d5			; prepare the "ld  (hl),h" instruction to d5
+	stopZ80					; wait for Z80 to stop
 ; ---------------------------------------------------------------------------
 ; addx in Motorola 68000 is much like adc in Z80. It allows us to add
 ; a register AND the carry to another register. What this means, is if
 ; we push 1 into carry (so, carry set), we will be loading $75 instead
 ; of $74 into the carry, making us able to switch between the Z80
 ; instructions  "ld  (hl),h" and "ld  (hl),l", which in turn allows
-; Dual PCM to bank switch into the appropriate bank.
+; Dual PCM to switch into the appropriate bank
 ; ---------------------------------------------------------------------------
 
 	rept 8
-		moveq	#0,d6			; prepare 0 into d3 (because of addx)
-		lsr.b	#1,d4			; shift lsb into carry
-		addx.b	d5,d6			; add instruction and carry into d3
+		moveq	#0,d6			; prepare 0 into d6 (because of addx)
+		lsr.b	#1,d4			; shift lsb of bank address into carry
+		addx.b	d5,d6			; add instruction and carry into d6
 		move.b	d6,(a4)+		; save instruction into Z80 memory
 	endr
 
-	StartZ80				; enable Z80 execution
+	startZ80				; enable Z80 execution
 
 locret_SetFilter:
 		rts
@@ -170,7 +175,7 @@ UpdateAMPS:
 		move.b	dZ80+YM_Buffer,d0	; load current cue buffer in use
 	startZ80				; enable Z80 execution
 
-		cmp.b	mLastCue.w,d0		; check if last queue was the same
+		cmp.b	mLastCue.w,d0		; check if last cue was the same
 		bne.s	.bufferok		; if it is same, Dual PCM is delayed and its baaad =(
 
 		moveq	#$20-1,d0		; loop for $20 times
@@ -180,9 +185,10 @@ UpdateAMPS:
 
 .rts
 		rts				; fuck it, Dual PCM does not want to cooperate
+; ---------------------------------------------------------------------------
 
 .bufferok
-		move.b	d0,mLastCue.w		; update the last queue
+		move.b	d0,mLastCue.w		; update the last cue
 		move.l	#dZ80+YM_Buffer1,a0	; set the cue address to buffer 1
 		tst.b	d0			; check buffer to use
 		bne.s	.gotbuffer		; if Z80 is reading buffer 2, branch
@@ -222,13 +228,16 @@ dUpdateAllAMPS:
 .notempo
 		tst.b	mFadeAddr+1.w		; check if a fade program is already executing
 	if safe=1
-		beq.w	.chkregion		; branch if not
+		beq.w	.checkspeed		; branch if not
 	else
-		beq.s	.chkregion		; branch if not
+		beq.s	.checkspeed		; branch if not
 	endif
 
 		move.l	mFadeAddr.w,a4		; get the fade porogram address to a4
 		addq.l	#3,mFadeAddr.w		; set the fade address to next group
+	if safe=1
+		AMPS_Debug_FadeAddr		; check whether this fade address is valid
+	endif
 
 		moveq	#1<<cfbVol,d0		; prepare volume update to d0
 		moveq	#0,d2
@@ -241,10 +250,11 @@ dUpdateAllAMPS:
 		lea	dFadeCommands(pc),a3	; load fade commands pointer table to a3
 		jsr	-$80(a3,d2.w)		; run the fade command code
 		clr.b	mFadeAddr+1.w		; mark the fade program as completed
-		bra.s	.chkregion		; go check the region
+		bra.s	.checkspeed		; go check the region
+; ---------------------------------------------------------------------------
 
 .nofadeend
-		cmp.b	mMasterVolFM.w,d2	; check if volume did not change
+		cmp.b	mMasterVolFM.w,d2	; check if volume changed
 		beq.s	.fadedac		; if did not, branch
 		move.b	d2,mMasterVolFM.w	; save the new volume
 
@@ -253,10 +263,11 @@ dUpdateAllAMPS:
 	else
 		jsr	dReqVolUpMusicFM(pc)	; only request music channels to update
 	endif
+; ---------------------------------------------------------------------------
 
 .fadedac
 		move.b	(a4)+,d2		; get DAC volume byte from fade data
-		cmp.b	mMasterVolDAC.w,d2	; check if volume did not change
+		cmp.b	mMasterVolDAC.w,d2	; check if volume changed
 		beq.s	.fadepsg		; if did not, branch
 		move.b	d2,mMasterVolDAC.w	; save new volume
 
@@ -269,11 +280,12 @@ dUpdateAllAMPS:
 	if FEATURE_SFX_MASTERVOL
 		or.b	d0,mSFXDAC1.w		; tell SFX DAC1 to update its volume
 	endif
+; ---------------------------------------------------------------------------
 
 .fadepsg
 		move.b	(a4)+,d2		; get PSG volume byte from fade data
-		cmp.b	mMasterVolPSG.w,d2	; check if volume did not change
-		beq.s	.chkregion		; if did not, branch
+		cmp.b	mMasterVolPSG.w,d2	; check if volume changed
+		beq.s	.checkspeed		; if did not, branch
 		move.b	d2,mMasterVolPSG.w	; save new volume
 
 .ch =	mPSG1					; start at PSG1
@@ -290,6 +302,33 @@ dUpdateAllAMPS:
 		endr
 	endif
 ; ---------------------------------------------------------------------------
+; This piece of code is used to emulate the Sonic 3 & Knuckles speed
+; shoes tempo algorithm. While it used the counter method to handle
+; it, we can get the same effect with overflow method too. The game
+; would run the tracker twice per frame in order to speed up music,
+; instead of changing the tempo. This is more CPU intensive, but has
+; less limit to what is a valid tempo value for music.
+; ---------------------------------------------------------------------------
+
+.checkspeed
+		jsr	dAMPSdoSFX(pc)		; run SFX before anything
+
+		btst	#mfbSpeed,mFlags.w	; check speed shoes flag
+		beq.s	.chkregion		; if not enabled, branch
+
+	if TEMPO_ALGORITHM		; Counter method
+		subq.b	#1,mSpeedAcc.w		; sub 1 from counter
+		bne.s	.chkregion		; if nonzero, branch
+		move.b	mSpeed.w,mSpeedAcc.w	; copy tempo again
+
+	else				; Overflow method
+		move.b	mSpeed.w,d3		; get tempo to d3
+		add.b	d3,mSpeedAcc.w		; add to accumulator
+		bcc.s	.chkregion		; if carry clear, branch
+	endif
+
+		bset	#mfbRunTwice,mFlags.w	; enable run twice flag
+; ---------------------------------------------------------------------------
 ; Since PAL Mega Drive's run slower than NTSC, if we want the music to
 ; sound consistent, we need to run the sound driver 1.2 times as fast
 ; on PAL systems. This will cause issues with some songs that rely on
@@ -300,13 +339,10 @@ dUpdateAllAMPS:
 ; ---------------------------------------------------------------------------
 
 .chkregion
-		btst	#6,ConsoleRegion.w	; is this PAL system?
-		beq.s	.driver			; if not, branch
+		btst	#mfbNoPAL,mFlags.w	; check if we have disabled the PAL fix
+		bne.s	.driver			; if yes, skip
 		subq.b	#1,mCtrPal.w		; decrease PAL frame counter
 		bgt.s	.driver			; if hasn't become 0 (or lower!), branch
-
-		btst	#mfbNoPAL,mFlags.w	; check if we have disabled the PAL fix
-		bne.s	.nofix			; if yes, run music and SFX
 		bsr.s	.driver			; run the sound driver
 
 .nofix
@@ -315,21 +351,36 @@ dUpdateAllAMPS:
 .driver
 	; continue to run sound driver again
 ; ---------------------------------------------------------------------------
-; This is a custom tempo algorithm. It allows for the tempo to run the
-; driver multiple times. However, because of the way the driver works,
-; the channels must be ran at least once. This code will delay the
-; channels if this needs to happen, before the execution occurs.
+; There are 2 methods of handling tempo adjustments in SMPS,
+; overflow (where a value is added to the accumulator, and when it
+; range overflows, tick of delay is added), and counter (where a
+; counter is copied to the tempo, which is then decreased each frame,
+; until it becomes 0, after which a tick of delay is added). AMPS
+; supports these both too, because there is no single right answer,
+; and users may prefer one over the other. The overflow method is
+; really good for low values, as it provides very fine control over
+; the tempo, but at high ranges it gets worse. Meanwhile the counter
+; method isn't as good for small values, but for large value it works
+; better. You may choose this setting in the macro.asm file.
 ; ---------------------------------------------------------------------------
 
-		move.w	mTempo.w,d3		; load tempo to d3
-		add.w	d3,mTempoAcc.w		; add to tempo accumulator
+	if TEMPO_ALGORITHM		; Counter method
+		subq.b	#1,mTempoAcc.w		; sub 1 from counter
+		bne.s	dAMPSdoDAC		; if nonzero, branch
+		move.b	mTempo.w,mTempoAcc.w	; copy tempo again
 
-		tst.b	mTempoAcc.w		; check if there is a full frame of delay yet
-		bne.s	dAMPSdoDAC		; if so, skip
-		addq.b	#1,mTempoAcc.w		; this later gets substracted from, fix it
+	else				; Overflow method
+		move.b	mTempo.w,d3		; get tempo to d3
+		add.b	d3,mTempoAcc.w		; add to accumulator
+		bcc.s	dAMPSdoDAC		; if carry clear, branch
+	endif
+
+		bclr	#mfbRunTwice,mFlags.w	; clear run twice flag
+		bne.s	dAMPSdoDAC		; if was set before, save a bit of time
 
 .ch =	mDAC1+cDuration				; start at DAC1 duration
 	rept Mus_Ch				; loop through all music channels
 		addq.b	#1,.ch.w		; add 1 to duration
 .ch =		.ch+cSize			; go to next channel
 	endr
+; ---------------------------------------------------------------------------
